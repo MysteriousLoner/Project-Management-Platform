@@ -1,6 +1,6 @@
 # 协策达
 
-A locally hosted project-management application for internal teams. Projects group tickets; tickets contain subtasks. 协策达 includes comments, unrestricted status changes, blocked and review queues, estimated completion dates, large chunked image/video attachments, structured JSON export, audit history, and a read-only Gemma 4 progress assistant.
+A locally hosted project-management application for internal teams. Projects group tickets; tickets contain subtasks. 协策达 includes comments, unrestricted status changes, blocked and review queues, estimated completion dates, unlimited chunked attachments, structured JSON export, audit history, and a read-only Gemma 4 progress assistant.
 
 ## Start
 
@@ -54,4 +54,4 @@ LLM credentials are read only by the server. They are never sent to the browser 
 
 ## Attachment storage
 
-Images and videos are divided into 16 MiB parts by the browser and streamed through the application to MinIO. 协策达 does not set a total file-size limit; actual capacity is constrained by available storage, infrastructure, and browser/network reliability.
+Images, videos, and general files can be attached while creating or editing tickets and subtasks. Files are divided into 16 MiB parts by the browser and streamed through the application to MinIO. 协策达 does not set a file-count or total file-size limit; actual capacity is constrained by available storage, infrastructure, and browser/network reliability.

@@ -1313,6 +1313,75 @@ td:first-child strong {
   cursor: pointer;
 }
 
+.form-attachments {
+  display: grid;
+  gap: 10px;
+  border: 1px dashed #cbd7cf;
+  border-radius: 10px;
+  padding: 13px;
+  background: #f8faf8;
+}
+
+.form-attachments > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.form-attachments > div:first-child strong {
+  color: #566159;
+  font-size: 11px;
+}
+
+.form-attachments > div:first-child small,
+.attachment-help {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.form-attachments > .file-label {
+  justify-self: start;
+}
+
+.queued-file-summary,
+.attachment-help {
+  margin: 0;
+}
+
+.queued-file-list {
+  display: grid;
+  gap: 6px;
+}
+
+.queued-file-list > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: white;
+}
+
+.queued-file-list > div > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+}
+
+.queued-file-list strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queued-file-list small,
+.queued-file-list b,
+.queued-file-summary {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .upload-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 160px 35px;
@@ -1353,6 +1422,25 @@ td:first-child strong {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.file-attachment-preview {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #53645a;
+}
+
+.file-attachment-preview b {
+  font-size: 35px;
+}
+
+.file-attachment-preview small {
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .attachment-card > div {

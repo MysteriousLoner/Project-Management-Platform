@@ -23,10 +23,13 @@ export async function GET(
     const range = request.headers.get("range");
     const object = await getObject(row.object_key, range);
     if (!object.Body) throw new Error("Object storage returned an empty response.");
+    const canPreviewInline =
+      (row.media_type.startsWith("image/") && row.media_type !== "image/svg+xml") ||
+      row.media_type.startsWith("video/");
     const headers = new Headers({
       "Content-Type": row.media_type,
       "Accept-Ranges": "bytes",
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(row.original_filename)}`,
+      "Content-Disposition": `${canPreviewInline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(row.original_filename)}`,
       "X-Content-Type-Options": "nosniff"
     });
     if (object.ContentLength !== undefined) headers.set("Content-Length", String(object.ContentLength));

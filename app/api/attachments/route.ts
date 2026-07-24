@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     if (!workItemId || !originalFilename) {
       throw new ApiError(422, "ATTACHMENT_FIELDS_REQUIRED", "Work item and filename are required.");
     }
-    if (!mediaType.startsWith("image/") && !mediaType.startsWith("video/")) {
-      throw new ApiError(422, "MEDIA_TYPE_NOT_ALLOWED", "Only image and video files are supported.");
+    if (originalFilename.length > 500 || !Number.isFinite(byteSize) || byteSize < 0) {
+      throw new ApiError(422, "ATTACHMENT_INVALID", "The attachment metadata is invalid.");
     }
     const item = await query("SELECT project_id FROM work_items WHERE id = $1", [workItemId]);
     if (!item.rowCount) throw new ApiError(404, "WORK_ITEM_NOT_FOUND", "Work item not found.");

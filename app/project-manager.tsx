@@ -102,6 +102,64 @@ async function api<T>(
   return payload;
 }
 
+function fileKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+async function uploadAttachmentsToItem({
+  workItemId,
+  files,
+  actorId,
+  onProgress
+}: {
+  workItemId: string;
+  files: File[];
+  actorId: string;
+  onProgress?: (key: string, progress: number) => void;
+}) {
+  const errors: string[] = [];
+  for (const file of files) {
+    const key = fileKey(file);
+    try {
+      onProgress?.(key, 0);
+      const initiated = await api<{ attachment: Attachment; chunkSize: number }>(
+        "/api/attachments",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            workItemId,
+            filename: file.name,
+            mediaType: file.type || "application/octet-stream",
+            byteSize: file.size
+          })
+        },
+        actorId
+      );
+      const parts: { partNumber: number; etag: string }[] = [];
+      const partCount = Math.max(1, Math.ceil(file.size / initiated.chunkSize));
+      for (let index = 0; index < partCount; index += 1) {
+        const start = index * initiated.chunkSize;
+        const end = Math.min(start + initiated.chunkSize, file.size);
+        const result = await api<{ partNumber: number; etag: string }>(
+          `/api/attachments/${initiated.attachment.id}/parts/${index + 1}`,
+          { method: "PUT", body: file.slice(start, end) },
+          actorId
+        );
+        parts.push(result);
+        onProgress?.(key, Math.round(((index + 1) / partCount) * 100));
+      }
+      await api(
+        `/api/attachments/${initiated.attachment.id}/complete`,
+        { method: "POST", body: JSON.stringify({ parts }) },
+        actorId
+      );
+    } catch (cause) {
+      errors.push(`${file.name}: ${(cause as Error).message}`);
+    }
+  }
+  return errors;
+}
+
 function StatusPill({ status }: { status: WorkStatus }) {
   const { t } = useI18n();
   return <span className={`status status-${status}`}>{t(`status.${status}`)}</span>;
@@ -474,9 +532,14 @@ export default function ProjectManager() {
           actorId={actor.id}
           type="ticket"
           onClose={() => setShowTicketForm(false)}
-          onCreated={async (item) => {
+          onCreated={async (item, uploadErrors = []) => {
             setShowTicketForm(false);
-            await refreshAll(t("form.createTicket"));
+            await refreshAll(
+              uploadErrors.length
+                ? `${t("form.createTicket")} · ${uploadErrors.length} attachment(s) failed`
+                : t("form.createTicket")
+            );
+            uploadErrors.forEach((message) => setError(message));
             const payload = await api<{ item: WorkItem }>(`/api/work-items?id=${item.id}`);
             setSelected(payload.item);
           }}
@@ -938,7 +1001,7 @@ function WorkItemForm({
   actorId: string;
   type: "ticket" | "subtask";
   onClose: () => void;
-  onCreated: (item: WorkItem) => void;
+  onCreated: (item: WorkItem, uploadErrors?: string[]) => void;
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState({
@@ -947,6 +1010,8 @@ function WorkItemForm({
     assigneeId: "",
     estimatedCompletionDate: ""
   });
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -970,7 +1035,14 @@ function WorkItemForm({
         },
         actorId
       );
-      onCreated(payload.item);
+      const uploadErrors = await uploadAttachmentsToItem({
+        workItemId: payload.item.id,
+        files,
+        actorId,
+        onProgress: (key, progress) =>
+          setFileProgress((current) => ({ ...current, [key]: progress }))
+      });
+      onCreated(payload.item, uploadErrors);
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -1001,6 +1073,59 @@ function WorkItemForm({
             rows={5}
           />
         </label>
+        <section className="form-attachments">
+          <div>
+            <strong>{t("form.attachments")}</strong>
+            <small>{t("form.attachmentsHelp")}</small>
+          </div>
+          <label className="button button-secondary file-label">
+            {t("form.chooseFiles")}
+            <input
+              type="file"
+              multiple
+              onChange={(event) => {
+                const selectedFiles = Array.from(event.target.files ?? []);
+                setFiles((current) => [...current, ...selectedFiles]);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {!!files.length && (
+            <>
+              <p className="queued-file-summary">
+                {t("form.queuedFiles", { count: files.length })}
+              </p>
+              <div className="queued-file-list">
+                {files.map((file, index) => {
+                  const progress = fileProgress[fileKey(file)];
+                  return (
+                    <div key={`${fileKey(file)}:${index}`}>
+                      <span aria-hidden="true">{file.type.startsWith("image/") ? "▧" : file.type.startsWith("video/") ? "▶" : "📎"}</span>
+                      <span>
+                        <strong>{file.name}</strong>
+                        <small>{bytes(file.size)}</small>
+                      </span>
+                      {progress === undefined ? (
+                        <button
+                          type="button"
+                          className="icon-button danger-button"
+                          aria-label={t("form.removeFile", { name: file.name })}
+                          onClick={() =>
+                            setFiles((current) => current.filter((_, candidate) => candidate !== index))
+                          }
+                        >
+                          ×
+                        </button>
+                      ) : (
+                        <b>{progress}%</b>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
         <div className="form-row">
           <label>
             {t("form.assignee")}
@@ -1033,7 +1158,16 @@ function WorkItemForm({
             {t("cancel")}
           </button>
           <button className="button button-primary" disabled={saving}>
-            {saving ? t("form.creating") : t("form.create", { type: t(type) })}
+            {saving && files.length
+              ? t("form.uploadingFiles", {
+                  progress: Math.round(
+                    Object.values(fileProgress).reduce((sum, value) => sum + value, 0) /
+                      Math.max(files.length, 1)
+                  )
+                })
+              : saving
+                ? t("form.creating")
+                : t("form.create", { type: t(type) })}
           </button>
         </div>
       </form>
@@ -1142,60 +1276,19 @@ function WorkItemDetail({
 
   async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
-    for (const file of files) {
-      try {
-        setUploadProgress((current) => ({ ...current, [file.name]: 0 }));
-        const initiated = await api<{
-          attachment: Attachment;
-          chunkSize: number;
-        }>(
-          "/api/attachments",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              workItemId: item.id,
-              filename: file.name,
-              mediaType: file.type,
-              byteSize: file.size
-            })
-          },
-          actor.id
-        );
-        const parts: { partNumber: number; etag: string }[] = [];
-        const chunkSize = initiated.chunkSize;
-        const partCount = Math.max(1, Math.ceil(file.size / chunkSize));
-        for (let index = 0; index < partCount; index += 1) {
-          const start = index * chunkSize;
-          const end = Math.min(start + chunkSize, file.size);
-          const chunk = file.slice(start, end);
-          const result = await api<{ partNumber: number; etag: string }>(
-            `/api/attachments/${initiated.attachment.id}/parts/${index + 1}`,
-            { method: "PUT", body: chunk },
-            actor.id
-          );
-          parts.push(result);
-          setUploadProgress((current) => ({
-            ...current,
-            [file.name]: Math.round(((index + 1) / partCount) * 100)
-          }));
-        }
-        await api(
-          `/api/attachments/${initiated.attachment.id}/complete`,
-          { method: "POST", body: JSON.stringify({ parts }) },
-          actor.id
-        );
-        await loadRelated();
-        await onChanged(`${file.name} uploaded`);
-      } catch (cause) {
-        onError(`${file.name}: ${(cause as Error).message}`);
-      } finally {
-        setUploadProgress((current) => {
-          const next = { ...current };
-          delete next[file.name];
-          return next;
-        });
-      }
+    const errors = await uploadAttachmentsToItem({
+      workItemId: item.id,
+      files,
+      actorId: actor.id,
+      onProgress: (key, progress) =>
+        setUploadProgress((current) => ({ ...current, [key]: progress }))
+    });
+    if (files.length > errors.length) {
+      await loadRelated();
+      await onChanged(`${files.length - errors.length} attachment(s) uploaded`);
     }
+    errors.forEach(onError);
+    setUploadProgress({});
     event.target.value = "";
   }
 
@@ -1279,12 +1372,13 @@ function WorkItemDetail({
                 <h3>{t("detail.attachments")}</h3>
                 <label className="text-button file-label">
                   {t("detail.upload")}
-                  <input type="file" accept="image/*,video/*" multiple onChange={uploadFiles} />
+                  <input type="file" multiple onChange={uploadFiles} />
                 </label>
               </div>
-              {Object.entries(uploadProgress).map(([name, progress]) => (
-                <div className="upload-row" key={name}>
-                  <span>{name}</span>
+              <p className="attachment-help">{t("detail.attachmentHelp")}</p>
+              {Object.entries(uploadProgress).map(([key, progress]) => (
+                <div className="upload-row" key={key}>
+                  <span>{key.split(":")[0]}</span>
                   <div className="upload-progress">
                     <span style={{ width: `${progress}%` }} />
                   </div>
@@ -1294,19 +1388,33 @@ function WorkItemDetail({
               <div className="attachment-grid">
                 {attachments.map((attachment) => (
                   <article className="attachment-card" key={attachment.id}>
-                    <a href={`/api/attachments/${attachment.id}/content`} target="_blank">
+                    <a
+                      href={`/api/attachments/${attachment.id}/content`}
+                      target="_blank"
+                      download={
+                        attachment.mediaType.startsWith("image/") ||
+                        attachment.mediaType.startsWith("video/")
+                          ? undefined
+                          : attachment.originalFilename
+                      }
+                    >
                       {attachment.mediaType.startsWith("image/") ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={`/api/attachments/${attachment.id}/content`}
                           alt={attachment.originalFilename}
                         />
-                      ) : (
+                      ) : attachment.mediaType.startsWith("video/") ? (
                         <video
                           src={`/api/attachments/${attachment.id}/content`}
                           controls
                           preload="metadata"
                         />
+                      ) : (
+                        <span className="file-attachment-preview">
+                          <b aria-hidden="true">📎</b>
+                          <small>{t("detail.fileAttachment")}</small>
+                        </span>
                       )}
                     </a>
                     <div>
@@ -1457,10 +1565,11 @@ function WorkItemDetail({
           actorId={actor.id}
           type="subtask"
           onClose={() => setShowSubtaskForm(false)}
-          onCreated={async () => {
+          onCreated={async (_, uploadErrors = []) => {
             setShowSubtaskForm(false);
             await loadRelated();
             await onChanged("Subtask created");
+            uploadErrors.forEach(onError);
           }}
         />
       )}
