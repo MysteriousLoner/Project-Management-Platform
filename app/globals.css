@@ -1639,7 +1639,7 @@ td:first-child strong {
   bottom: 0;
   display: grid;
   width: min(430px, 95vw);
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto auto 1fr auto auto;
   background: white;
   box-shadow: -15px 0 45px rgba(24, 35, 29, 0.17);
   z-index: 150;
@@ -1672,6 +1672,80 @@ td:first-child strong {
 .chat-panel > footer {
   color: var(--muted);
   font-size: 9px;
+}
+
+.chat-scope-control {
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 15px;
+  background: #f8faf8;
+}
+
+.chat-scope-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.chat-scope-heading strong {
+  font-size: 11px;
+}
+
+.chat-scope-heading small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.chat-scope-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border-radius: 9px;
+  padding: 3px;
+  background: #e9eeea;
+}
+
+.chat-scope-toggle button {
+  border: 0;
+  border-radius: 7px;
+  padding: 8px;
+  background: transparent;
+  color: #657069;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-scope-toggle button.active {
+  background: white;
+  color: var(--green);
+  box-shadow: 0 2px 7px rgb(24 35 29 / 10%);
+}
+
+.chat-scope-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chat-scope-control label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.chat-scope-control select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
 }
 
 .chat-messages {

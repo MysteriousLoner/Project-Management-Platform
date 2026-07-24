@@ -16,6 +16,10 @@ A locally hosted project-management application for internal teams. Projects gro
 
 PostgreSQL and MinIO use persistent Docker volumes. The database schema and attachment bucket are initialized automatically.
 
+## Progress assistant context
+
+The chatbot defaults to **Global** context, which includes every active project and all of their tickets, subtasks, and comments. Users can switch the assistant to **Project** context and choose a specific project from the assistant panel. The selected context mode and project are saved in the browser.
+
 ## Languages and mobile installation
 
 The interface supports English and Simplified Chinese. The browser language is used on the first visit, and the selected language is then saved locally. Change it from the top toolbar or Settings.

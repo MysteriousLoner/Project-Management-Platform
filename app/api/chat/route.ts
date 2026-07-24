@@ -11,8 +11,13 @@ export async function POST(request: Request) {
     await requireActor(actorId(request));
     const body = await requestJson(request);
     const question = String(body.question ?? "").trim();
-    const projectId = body.projectId ? String(body.projectId) : null;
+    const scopeMode =
+      body.scopeMode === "project" || (!body.scopeMode && body.projectId) ? "project" : "global";
+    const projectId = scopeMode === "project" && body.projectId ? String(body.projectId) : null;
     if (!question) throw new ApiError(422, "QUESTION_REQUIRED", "Enter a question.");
+    if (scopeMode === "project" && !projectId) {
+      throw new ApiError(422, "PROJECT_REQUIRED", "Select a project for project-specific context.");
+    }
     const baseUrl = process.env.LLM_API_BASE_URL?.replace(/\/$/, "");
     const apiKey = process.env.LLM_API_KEY;
     const model = process.env.LLM_MODEL;
@@ -21,11 +26,14 @@ export async function POST(request: Request) {
     }
 
     const projectResult = await query(
-      `SELECT id, key, name FROM projects
+      `SELECT id, key, name, description FROM projects
        WHERE NOT is_archived AND ($1::uuid IS NULL OR id = $1)
        ORDER BY name`,
       [projectId]
     );
+    if (scopeMode === "project" && !projectResult.rowCount) {
+      throw new ApiError(404, "PROJECT_NOT_FOUND", "The selected project was not found.");
+    }
     const itemResult = await query(
       `SELECT wi.id, wi.project_id, wi.type, wi.parent_id, wi.key, wi.title,
               wi.description, wi.status, wi.blocked_reason, wi.estimated_completion_date,
@@ -36,8 +44,7 @@ export async function POST(request: Request) {
        WHERE NOT wi.is_archived AND ($1::uuid IS NULL OR wi.project_id = $1)
        ORDER BY
          CASE wi.status WHEN 'blocked' THEN 0 WHEN 'ready_for_review' THEN 1 ELSE 2 END,
-         wi.updated_at DESC
-       LIMIT 200`,
+         wi.updated_at DESC`,
       [projectId]
     );
     const projectIds = projectResult.rows.map((row) => row.id);
@@ -49,14 +56,23 @@ export async function POST(request: Request) {
              JOIN users u ON u.id = c.author_id
              JOIN work_items wi ON wi.id = c.work_item_id
              WHERE wi.project_id = ANY($1::uuid[])
-             ORDER BY c.created_at DESC
-             LIMIT 100`,
+               AND NOT wi.is_archived
+             ORDER BY c.created_at DESC`,
             [projectIds]
           )
         : { rows: [] };
+    const selectedProject = projectResult.rows[0] ?? null;
+    const scope = {
+      mode: scopeMode,
+      projectId,
+      projectName: scopeMode === "project" ? selectedProject?.name ?? null : null,
+      projectCount: projectResult.rows.length,
+      workItemCount: itemResult.rows.length,
+      commentCount: comments.rows.length
+    };
     const context = {
       generatedAt: new Date().toISOString(),
-      scope: projectId ? "selected project" : "all projects",
+      scope,
       projects: projectResult.rows.map(rowToCamel),
       workItems: itemResult.rows.map(rowToCamel),
       recentComments: comments.rows.map(rowToCamel)
@@ -76,6 +92,7 @@ export async function POST(request: Request) {
             role: "system",
             content:
               "You are a read-only project progress assistant. Answer only from the supplied JSON. " +
+              "The scope object is authoritative: global means every active project, while project means one selected project. " +
               "Distinguish projects, tickets, and subtasks. Treat descoped work separately from completed work. " +
               "Mention ticket keys when discussing work. Never claim to inspect attachment contents. " +
               "If data is insufficient, say so. Include the scope and data timestamp in summaries."
@@ -99,7 +116,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       answer,
       generatedAt: context.generatedAt,
-      scope: context.scope
+      scope
     });
   } catch (error) {
     return jsonError(error);

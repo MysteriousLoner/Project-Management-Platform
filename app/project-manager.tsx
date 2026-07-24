@@ -22,6 +22,15 @@ import {
 import { type Locale, useI18n } from "@/lib/i18n";
 
 type View = "dashboard" | "tickets" | "blocked" | "review" | "activity" | "settings";
+type ChatScopeMode = "global" | "project";
+type ChatScopeResponse = {
+  mode: ChatScopeMode;
+  projectId: string | null;
+  projectName: string | null;
+  projectCount: number;
+  workItemCount: number;
+  commentCount: number;
+};
 type Stats = {
   ticketTotal: number;
   ticketCompleted: number;
@@ -562,7 +571,8 @@ export default function ProjectManager() {
       {chatOpen && actor && (
         <ChatPanel
           actorId={actor.id}
-          project={project}
+          selectedProject={project}
+          projects={projects}
           onClose={() => setChatOpen(false)}
         />
       )}
@@ -1804,25 +1814,53 @@ function SettingsView({
 
 function ChatPanel({
   actorId,
-  project,
+  selectedProject,
+  projects,
   onClose
 }: {
   actorId: string;
-  project: Project | null;
+  selectedProject: Project | null;
+  projects: Project[];
   onClose: () => void;
 }) {
   const { locale, t } = useI18n();
+  const [scopeMode, setScopeMode] = useState<ChatScopeMode>(() => {
+    const stored = localStorage.getItem("xieceda.chatScope");
+    return stored === "project" ? "project" : "global";
+  });
+  const [scopeProjectId, setScopeProjectId] = useState(
+    () => localStorage.getItem("xieceda.chatProjectId") ?? selectedProject?.id ?? projects[0]?.id ?? ""
+  );
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string; meta?: string }[]
   >([]);
   const [question, setQuestion] = useState("");
   const [sending, setSending] = useState(false);
+  const scopeProject =
+    projects.find((entry) => entry.id === scopeProjectId) ?? selectedProject ?? projects[0] ?? null;
+  const scopeLabel =
+    scopeMode === "global" ? t("chat.scopeGlobal") : scopeProject?.name ?? t("chat.selectProject");
   const suggestions = [
-    t("chat.suggestionSummary"),
+    t(scopeMode === "global" ? "chat.suggestionSummaryGlobal" : "chat.suggestionSummary"),
     t("chat.suggestionBlocked"),
     t("chat.suggestionReview"),
     t("chat.suggestionStale")
   ];
+
+  function changeScope(mode: ChatScopeMode) {
+    if (mode === scopeMode) return;
+    setScopeMode(mode);
+    localStorage.setItem("xieceda.chatScope", mode);
+    setMessages([]);
+    setQuestion("");
+  }
+
+  function changeScopeProject(projectId: string) {
+    setScopeProjectId(projectId);
+    localStorage.setItem("xieceda.chatProjectId", projectId);
+    setMessages([]);
+    setQuestion("");
+  }
 
   async function ask(value?: string) {
     const prompt = (value ?? question).trim();
@@ -1831,11 +1869,19 @@ function ChatPanel({
     setMessages((current) => [...current, { role: "user", content: prompt }]);
     setSending(true);
     try {
-      const payload = await api<{ answer: string; generatedAt: string; scope: string }>(
+      const payload = await api<{
+        answer: string;
+        generatedAt: string;
+        scope: ChatScopeResponse;
+      }>(
         "/api/chat",
         {
           method: "POST",
-          body: JSON.stringify({ question: prompt, projectId: project?.id ?? null })
+          body: JSON.stringify({
+            question: prompt,
+            scopeMode,
+            projectId: scopeMode === "project" ? scopeProject?.id ?? null : null
+          })
         },
         actorId
       );
@@ -1844,7 +1890,11 @@ function ChatPanel({
         {
           role: "assistant",
           content: payload.answer,
-          meta: `${payload.scope} · ${formatDate(payload.generatedAt, true, locale)}`
+          meta: `${
+            payload.scope.mode === "global"
+              ? `${t("chat.scopeGlobal")} · ${payload.scope.projectCount} ${t("project")}`
+              : payload.scope.projectName
+          } · ${payload.scope.workItemCount} ${t("nav.tickets")} · ${formatDate(payload.generatedAt, true, locale)}`
         }
       ]);
     } catch (cause) {
@@ -1867,13 +1917,52 @@ function ChatPanel({
           <span className="chat-symbol">✦</span>
           <span>
             <strong>{t("chat.assistant")}</strong>
-            <small>{project ? project.name : t("chat.allProjects")}</small>
+            <small>{scopeLabel}</small>
           </span>
         </div>
         <button className="icon-button" onClick={onClose} aria-label={t("chat.close")}>
           ×
         </button>
       </header>
+      <section className="chat-scope-control">
+        <div className="chat-scope-heading">
+          <strong>{t("chat.context")}</strong>
+          <small>
+            {t(scopeMode === "global" ? "chat.globalDescription" : "chat.projectDescription")}
+          </small>
+        </div>
+        <div className="chat-scope-toggle" role="group" aria-label={t("chat.context")}>
+          <button
+            type="button"
+            className={scopeMode === "global" ? "active" : ""}
+            aria-pressed={scopeMode === "global"}
+            onClick={() => changeScope("global")}
+          >
+            {t("chat.scopeGlobal")}
+          </button>
+          <button
+            type="button"
+            className={scopeMode === "project" ? "active" : ""}
+            aria-pressed={scopeMode === "project"}
+            disabled={!scopeProject}
+            onClick={() => changeScope("project")}
+          >
+            {t("chat.scopeProject")}
+          </button>
+        </div>
+        {scopeMode === "project" && scopeProject && (
+          <label>
+            <span>{t("chat.selectProject")}</span>
+            <select value={scopeProject.id} onChange={(event) => changeScopeProject(event.target.value)}>
+              {projects.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.key} · {entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </section>
       <div className="chat-messages">
         {!messages.length && (
           <div className="chat-welcome">
@@ -1920,7 +2009,7 @@ function ChatPanel({
           ↑
         </button>
       </form>
-      <footer>{t("chat.footer")}</footer>
+      <footer>{t("chat.footer", { scope: scopeLabel })}</footer>
     </aside>
   );
 }
