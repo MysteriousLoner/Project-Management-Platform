@@ -38,9 +38,11 @@ export async function POST(request: Request) {
       `SELECT wi.id, wi.project_id, wi.type, wi.parent_id, wi.key, wi.title,
               wi.description, wi.status, wi.blocked_reason, wi.estimated_completion_date,
               wi.created_at, wi.updated_at, wi.completed_at,
-              u.display_name AS assignee_name
+              u.display_name AS assignee_name,
+              wi.report_to_id, reporter.display_name AS report_to_name
        FROM work_items wi
        LEFT JOIN users u ON u.id = wi.assignee_id
+       LEFT JOIN users reporter ON reporter.id = wi.report_to_id
        WHERE NOT wi.is_archived AND ($1::uuid IS NULL OR wi.project_id = $1)
        ORDER BY
          CASE wi.status WHEN 'blocked' THEN 0 WHEN 'ready_for_review' THEN 1 ELSE 2 END,

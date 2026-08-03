@@ -45,6 +45,8 @@ export type WorkItem = {
   status: WorkStatus;
   assigneeId: string | null;
   assigneeName: string | null;
+  reportToId: string | null;
+  reportToName: string | null;
   createdById: string;
   createdByName: string;
   updatedById: string;

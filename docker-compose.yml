@@ -33,6 +33,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
     env_file:
       - .env
     environment:
@@ -51,7 +53,7 @@ services:
     ports:
       - "${APP_PORT:-3080}:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000${NEXT_PUBLIC_BASE_PATH:-}/api/health"]
       interval: 10s
       timeout: 5s
       retries: 20

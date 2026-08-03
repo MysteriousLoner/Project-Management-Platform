@@ -50,6 +50,27 @@ describe("work-item validation", () => {
     });
     expect(result.estimatedCompletionDate).toBe("2026-09-30");
   });
+
+  it("allows Report To on tickets and rejects it on subtasks", () => {
+    const reportToId = "33333333-3333-4333-8333-333333333333";
+    expect(
+      workItemInputSchema.parse({
+        projectId,
+        type: "ticket",
+        title: "Coordinate launch",
+        reportToId
+      }).reportToId
+    ).toBe(reportToId);
+    expect(
+      workItemInputSchema.safeParse({
+        projectId,
+        parentId,
+        type: "subtask",
+        title: "Coordinate launch",
+        reportToId
+      }).success
+    ).toBe(false);
+  });
 });
 
 describe("database response mapping", () => {

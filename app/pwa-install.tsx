@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { appPath, BASE_PATH } from "@/lib/base-path";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -18,7 +19,7 @@ export default function PwaInstallPrompt() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      navigator.serviceWorker.register(appPath("/sw.js"), { scope: BASE_PATH || "/" }).catch(() => {
         // The app remains usable if service-worker registration is unavailable.
       });
     }
@@ -75,7 +76,7 @@ export default function PwaInstallPrompt() {
   return (
     <div className="pwa-prompt" role="dialog" aria-modal="true" aria-labelledby="pwa-title">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/icons/icon-192.png" alt="" />
+      <img src={appPath("/icons/icon-192.png")} alt="" />
       <div className="pwa-prompt-copy">
         <strong id="pwa-title">{t("pwa.title")}</strong>
         <p>{t("pwa.description")}</p>

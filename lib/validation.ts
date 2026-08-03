@@ -23,6 +23,7 @@ export const workItemInputSchema = z
     description: z.string().max(100000).optional().default(""),
     status: z.enum(TICKET_STATUSES).optional().default("not_started"),
     assigneeId: idSchema.nullable().optional(),
+    reportToId: idSchema.nullable().optional(),
     blockedReason: z.string().trim().max(10000).nullable().optional(),
     estimatedCompletionDate: z.iso.date().nullable().optional()
   })
@@ -32,6 +33,9 @@ export const workItemInputSchema = z
     }
     if (value.type === "ticket" && value.parentId) {
       context.addIssue({ code: "custom", message: "A ticket cannot have a parent." });
+    }
+    if (value.type === "subtask" && value.reportToId) {
+      context.addIssue({ code: "custom", message: "Report To is only available for tickets." });
     }
     if (value.type === "subtask" && !SUBTASK_STATUSES.includes(value.status as never)) {
       context.addIssue({ code: "custom", message: "Ready for Review is not available for subtasks." });
@@ -46,6 +50,7 @@ export const workItemPatchSchema = z.object({
   description: z.string().max(100000).optional(),
   status: z.enum(TICKET_STATUSES).optional(),
   assigneeId: idSchema.nullable().optional(),
+  reportToId: idSchema.nullable().optional(),
   blockedReason: z.string().trim().max(10000).nullable().optional(),
   estimatedCompletionDate: z.iso.date().nullable().optional(),
   isArchived: z.boolean().optional()

@@ -17,9 +17,11 @@ export async function GET(request: Request) {
     const output = [];
     for (const project of projects.rows) {
       const items = await query(
-        `SELECT wi.*, assignee.display_name AS assignee_name
+        `SELECT wi.*, assignee.display_name AS assignee_name,
+                reporter.display_name AS report_to_name
          FROM work_items wi
          LEFT JOIN users assignee ON assignee.id = wi.assignee_id
+         LEFT JOIN users reporter ON reporter.id = wi.report_to_id
          WHERE wi.project_id = $1 AND NOT wi.is_archived
          ORDER BY wi.type, wi.created_at`,
         [project.id]

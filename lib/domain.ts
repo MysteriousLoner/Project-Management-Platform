@@ -51,6 +51,7 @@ export const workItemSelect = `
   SELECT
     wi.id, wi.project_id, wi.type, wi.parent_id, wi.key, wi.title, wi.description,
     wi.status, wi.assignee_id, assignee.display_name AS assignee_name,
+    wi.report_to_id, reporter.display_name AS report_to_name,
     wi.created_by_id, creator.display_name AS created_by_name,
     wi.updated_by_id, updater.display_name AS updated_by_name,
     wi.blocked_reason, wi.estimated_completion_date, wi.is_archived,
@@ -69,6 +70,7 @@ export const workItemSelect = `
   JOIN users creator ON creator.id = wi.created_by_id
   JOIN users updater ON updater.id = wi.updated_by_id
   LEFT JOIN users assignee ON assignee.id = wi.assignee_id
+  LEFT JOIN users reporter ON reporter.id = wi.report_to_id
   LEFT JOIN LATERAL (
     SELECT
       count(*) FILTER (WHERE NOT child.is_archived)::int AS subtask_total,

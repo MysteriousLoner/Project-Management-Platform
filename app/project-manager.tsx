@@ -20,6 +20,8 @@ import {
   type WorkStatus
 } from "@/lib/types";
 import { type Locale, useI18n } from "@/lib/i18n";
+import { appPath } from "@/lib/base-path";
+import PushNotificationSettings from "./push-notification-settings";
 
 type View = "dashboard" | "tickets" | "blocked" | "review" | "activity" | "settings";
 type ChatScopeMode = "global" | "project";
@@ -103,7 +105,7 @@ async function api<T>(
   const headers = new Headers(options.headers);
   if (actorId) headers.set("X-Actor-Id", actorId);
   if (options.body && !(options.body instanceof Blob)) headers.set("Content-Type", "application/json");
-  const response = await fetch(path, { ...options, headers });
+  const response = await fetch(appPath(path), { ...options, headers });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload?.error?.message ?? `Request failed (${response.status})`);
@@ -307,6 +309,22 @@ export default function ProjectManager() {
     if (view === "activity") loadActivity().catch((cause) => setError(cause.message));
   }, [view, loadActivity]);
 
+  useEffect(() => {
+    if (!actorId || !projects.length) return;
+    const ticketId = new URLSearchParams(window.location.search).get("ticket");
+    if (!ticketId) return;
+    api<{ item: WorkItem }>(`/api/work-items?id=${ticketId}`)
+      .then(({ item }) => {
+        const owningProject = projects.find((entry) => entry.id === item.projectId);
+        if (owningProject) selectProject(owningProject.id);
+        setSelected(item);
+        window.history.replaceState({}, "", window.location.pathname);
+      })
+      .catch((cause) => setError(cause.message));
+    // This runs only when a notification deep link is present.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actorId, projects]);
+
   async function refreshAll(message?: string) {
     await Promise.all([loadProjectData(), loadProjects(), loadIdentity()]);
     if (selected) {
@@ -349,7 +367,7 @@ export default function ProjectManager() {
     return (
       <main className="center-page">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="picker-brand-image" src="/icons/icon-192.png" alt="" />
+        <img className="picker-brand-image" src={appPath("/icons/icon-192.png")} alt="" />
         <p>{t("loading.workspace")}</p>
       </main>
     );
@@ -360,7 +378,7 @@ export default function ProjectManager() {
       <aside className="sidebar">
         <div className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="brand-app-icon" src="/icons/icon-192.png" alt="" />
+          <img className="brand-app-icon" src={appPath("/icons/icon-192.png")} alt="" />
           <span>协策达</span>
         </div>
         <label className="project-select-label">
@@ -441,7 +459,7 @@ export default function ProjectManager() {
             </label>
             <a
               className="button button-ghost"
-              href={`/api/export${projectId ? `?projectId=${projectId}` : ""}`}
+              href={appPath(`/api/export${projectId ? `?projectId=${projectId}` : ""}`)}
               target="_blank"
             >
               {t("header.jsonApi")}
@@ -634,7 +652,7 @@ function UserPicker({
           </button>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="picker-brand-image" src="/icons/icon-192.png" alt="" />
+        <img className="picker-brand-image" src={appPath("/icons/icon-192.png")} alt="" />
         <span className="eyebrow">{t("identity.selection")}</span>
         <h1>{t("identity.question")}</h1>
         <p className="muted">{t("identity.description")}</p>
@@ -863,6 +881,7 @@ function TicketsView({
               <th>{t("tickets.columnTicket")}</th>
               <th>{t("tickets.columnStatus")}</th>
               <th>{t("tickets.columnAssignee")}</th>
+              <th>{t("tickets.columnReportTo")}</th>
               <th>{t("tickets.columnProgress")}</th>
               <th>{t("tickets.columnEstimate")}</th>
               <th>{t("tickets.columnUpdated")}</th>
@@ -871,6 +890,7 @@ function TicketsView({
           <tbody>
             {tickets.map((item) => {
               const assigned = users.find((user) => user.id === item.assigneeId);
+              const reporter = users.find((user) => user.id === item.reportToId);
               return (
                 <tr key={item.id} onClick={() => onOpen(item)}>
                   <td>
@@ -885,6 +905,16 @@ function TicketsView({
                       <span className="person">
                         <Avatar user={assigned} small />
                         {assigned.displayName}
+                      </span>
+                    ) : (
+                      <span className="muted">{t("unassigned")}</span>
+                    )}
+                  </td>
+                  <td>
+                    {reporter ? (
+                      <span className="person">
+                        <Avatar user={reporter} small />
+                        {reporter.displayName}
                       </span>
                     ) : (
                       <span className="muted">{t("unassigned")}</span>
@@ -1018,6 +1048,7 @@ function WorkItemForm({
     title: "",
     description: "",
     assigneeId: "",
+    reportToId: "",
     estimatedCompletionDate: ""
   });
   const [files, setFiles] = useState<File[]>([]);
@@ -1040,6 +1071,7 @@ function WorkItemForm({
             title: form.title,
             description: form.description,
             assigneeId: form.assigneeId || null,
+            reportToId: type === "ticket" ? form.reportToId || null : null,
             estimatedCompletionDate: form.estimatedCompletionDate || null
           })
         },
@@ -1151,6 +1183,23 @@ function WorkItemForm({
               ))}
             </select>
           </label>
+          {type === "ticket" && (
+            <label>
+              {t("form.reportTo")}
+              <select
+                value={form.reportToId}
+                onChange={(event) => setForm({ ...form, reportToId: event.target.value })}
+              >
+                <option value="">{t("unassigned")}</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {type === "subtask" && (
           <label>
             {t("form.estimated")}
             <input
@@ -1161,7 +1210,20 @@ function WorkItemForm({
               }
             />
           </label>
+          )}
         </div>
+        {type === "ticket" && (
+          <label>
+            {t("form.estimated")}
+            <input
+              type="date"
+              value={form.estimatedCompletionDate}
+              onChange={(event) =>
+                setForm({ ...form, estimatedCompletionDate: event.target.value })
+              }
+            />
+          </label>
+        )}
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <button className="button button-ghost" type="button" onClick={onClose}>
@@ -1399,7 +1461,7 @@ function WorkItemDetail({
                 {attachments.map((attachment) => (
                   <article className="attachment-card" key={attachment.id}>
                     <a
-                      href={`/api/attachments/${attachment.id}/content`}
+                      href={appPath(`/api/attachments/${attachment.id}/content`)}
                       target="_blank"
                       download={
                         attachment.mediaType.startsWith("image/") ||
@@ -1411,12 +1473,12 @@ function WorkItemDetail({
                       {attachment.mediaType.startsWith("image/") ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={`/api/attachments/${attachment.id}/content`}
+                          src={appPath(`/api/attachments/${attachment.id}/content`)}
                           alt={attachment.originalFilename}
                         />
                       ) : attachment.mediaType.startsWith("video/") ? (
                         <video
-                          src={`/api/attachments/${attachment.id}/content`}
+                          src={appPath(`/api/attachments/${attachment.id}/content`)}
                           controls
                           preload="metadata"
                         />
@@ -1504,6 +1566,24 @@ function WorkItemDetail({
                 ))}
               </select>
             </label>
+            {item.type === "ticket" && (
+              <label>
+                {t("form.reportTo")}
+                <select
+                  value={item.reportToId ?? ""}
+                  onChange={(event) =>
+                    patch({ reportToId: event.target.value || null }, "Report-to user updated")
+                  }
+                >
+                  <option value="">{t("unassigned")}</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               {t("form.estimated")}
               <input
@@ -1795,6 +1875,14 @@ function SettingsView({
           </select>
         </label>
       </section>
+
+      {actorId && (
+        <section className="panel settings-section">
+          <span className="eyebrow">{t("push.eyebrow")}</span>
+          <h2>{t("push.settingsTitle")}</h2>
+          <PushNotificationSettings actorId={actorId} />
+        </section>
+      )}
 
       <section className="panel settings-section settings-wide">
         <span className="eyebrow">{t("settings.integrations")}</span>

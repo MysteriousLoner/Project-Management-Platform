@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS work_items (
   description text NOT NULL DEFAULT '',
   status work_item_status NOT NULL DEFAULT 'not_started',
   assignee_id uuid REFERENCES users(id),
+  report_to_id uuid REFERENCES users(id),
   created_by_id uuid NOT NULL REFERENCES users(id),
   updated_by_id uuid NOT NULL REFERENCES users(id),
   blocked_reason text,
@@ -85,6 +86,27 @@ CREATE TABLE IF NOT EXISTS work_items (
   CONSTRAINT blocked_reason_required CHECK (
     status <> 'blocked' OR length(trim(coalesce(blocked_reason, ''))) > 0
   )
+);
+
+ALTER TABLE work_items
+  ADD COLUMN IF NOT EXISTS report_to_id uuid REFERENCES users(id);
+
+CREATE TABLE IF NOT EXISTS push_settings (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  public_key text NOT NULL,
+  private_key text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint text NOT NULL UNIQUE,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  user_agent text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS comments (
@@ -130,6 +152,10 @@ CREATE INDEX IF NOT EXISTS idx_work_items_parent
   ON work_items(parent_id, position);
 CREATE INDEX IF NOT EXISTS idx_work_items_assignee
   ON work_items(assignee_id, status, is_archived);
+CREATE INDEX IF NOT EXISTS idx_work_items_report_to
+  ON work_items(report_to_id, status, is_archived);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+  ON push_subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_work_item
   ON comments(work_item_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_attachments_work_item

@@ -26,6 +26,19 @@ The interface supports English and Simplified Chinese. The browser language is u
 
 协策达 is an installable Progressive Web App. On the first mobile visit it displays an installation prompt. Supported Chromium browsers can launch the native installer; iPhone and iPad users receive the Safari “Add to Home Screen” instructions. The app manifest, service worker, Apple touch icon, and maskable Android icon are included.
 
+## Report-to notifications
+
+Tickets have a separate **Report to** person in addition to the assignee. The reporter receives Web Push notifications when the ticket status changes or a subtask status changes the parent ticket's progress. Notifications include the project, ticket key/title, status transition, and progress percentage when applicable.
+
+Each person must register their phone once:
+
+1. Open the application as that user.
+2. On iPhone, install the PWA to the Home Screen first; on Android, use the installed PWA or a supported browser.
+3. Open **Settings → Phone push notifications** and choose **Enable notifications**.
+4. Allow the browser permission and use **Send test** to verify delivery.
+
+Web Push requires HTTPS outside `localhost`. VAPID keys are generated once and persisted in PostgreSQL unless `WEB_PUSH_PUBLIC_KEY` and `WEB_PUSH_PRIVATE_KEY` are explicitly configured.
+
 ## Services
 
 - Next.js app and API: `localhost:3080` by default
