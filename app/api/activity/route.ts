@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const projectId = new URL(request.url).searchParams.get("projectId");
+    const departmentId = new URL(request.url).searchParams.get("departmentId");
     const result = await query(
       `SELECT ae.id, ae.project_id, ae.work_item_id, ae.action, ae.field_name,
               ae.old_value, ae.new_value, ae.metadata, ae.created_at,
@@ -15,9 +16,12 @@ export async function GET(request: Request) {
        LEFT JOIN users u ON u.id = ae.actor_id
        LEFT JOIN work_items wi ON wi.id = ae.work_item_id
        WHERE ($1::uuid IS NULL OR ae.project_id = $1)
+         AND ($2::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM projects p WHERE p.id = ae.project_id AND p.department_id = $2
+         ))
        ORDER BY ae.created_at DESC
        LIMIT 200`,
-      [projectId]
+      [projectId, departmentId]
     );
     return NextResponse.json({ events: result.rows.map(rowToCamel) });
   } catch (error) {

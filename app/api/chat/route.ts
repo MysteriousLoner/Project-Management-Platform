@@ -14,10 +14,12 @@ export async function POST(request: Request) {
     const scopeMode =
       body.scopeMode === "project" || (!body.scopeMode && body.projectId) ? "project" : "global";
     const projectId = scopeMode === "project" && body.projectId ? String(body.projectId) : null;
+    const departmentId = String(body.departmentId ?? "");
     if (!question) throw new ApiError(422, "QUESTION_REQUIRED", "Enter a question.");
     if (scopeMode === "project" && !projectId) {
       throw new ApiError(422, "PROJECT_REQUIRED", "Select a project for project-specific context.");
     }
+    if (!departmentId) throw new ApiError(422, "DEPARTMENT_REQUIRED", "Select a department.");
     const baseUrl = process.env.LLM_API_BASE_URL?.replace(/\/$/, "");
     const apiKey = process.env.LLM_API_KEY;
     const model = process.env.LLM_MODEL;
@@ -27,9 +29,10 @@ export async function POST(request: Request) {
 
     const projectResult = await query(
       `SELECT id, key, name, description FROM projects
-       WHERE NOT is_archived AND ($1::uuid IS NULL OR id = $1)
+       WHERE NOT is_archived AND department_id = $2
+         AND ($1::uuid IS NULL OR id = $1)
        ORDER BY name`,
-      [projectId]
+      [projectId, departmentId]
     );
     if (scopeMode === "project" && !projectResult.rowCount) {
       throw new ApiError(404, "PROJECT_NOT_FOUND", "The selected project was not found.");
@@ -43,11 +46,13 @@ export async function POST(request: Request) {
        FROM work_items wi
        LEFT JOIN users u ON u.id = wi.assignee_id
        LEFT JOIN users reporter ON reporter.id = wi.report_to_id
-       WHERE NOT wi.is_archived AND ($1::uuid IS NULL OR wi.project_id = $1)
+       JOIN projects scope_project ON scope_project.id = wi.project_id
+       WHERE NOT wi.is_archived AND scope_project.department_id = $2
+         AND ($1::uuid IS NULL OR wi.project_id = $1)
        ORDER BY
          CASE wi.status WHEN 'blocked' THEN 0 WHEN 'ready_for_review' THEN 1 ELSE 2 END,
          wi.updated_at DESC`,
-      [projectId]
+      [projectId, departmentId]
     );
     const projectIds = projectResult.rows.map((row) => row.id);
     const comments =
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
     const selectedProject = projectResult.rows[0] ?? null;
     const scope = {
       mode: scopeMode,
+      departmentId,
       projectId,
       projectName: scopeMode === "project" ? selectedProject?.name ?? null : null,
       projectCount: projectResult.rows.length,

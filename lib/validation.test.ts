@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { rowToCamel } from "./db";
-import { workItemInputSchema, workItemPatchSchema } from "./validation";
+import {
+  departmentInputSchema,
+  projectInputSchema,
+  userInputSchema,
+  workItemInputSchema,
+  workItemPatchSchema
+} from "./validation";
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const parentId = "22222222-2222-4222-8222-222222222222";
+const departmentId = "44444444-4444-4444-8444-444444444444";
+
+describe("department validation", () => {
+  it("normalizes department names through trimmed validated input", () => {
+    expect(departmentInputSchema.parse({ name: "  Tech-MY-IT  " })).toEqual({ name: "Tech-MY-IT" });
+  });
+
+  it("requires an initial department for new users and projects", () => {
+    expect(userInputSchema.safeParse({ displayName: "Alex" }).success).toBe(false);
+    expect(projectInputSchema.safeParse({ name: "Portal", key: "PORTAL" }).success).toBe(false);
+    expect(userInputSchema.parse({ displayName: "Alex", departmentId }).departmentId).toBe(departmentId);
+    expect(projectInputSchema.parse({ name: "Portal", key: "PORTAL", departmentId }).departmentId).toBe(departmentId);
+  });
+});
 
 describe("work-item validation", () => {
   it("allows every ticket status without enforcing a transition sequence", () => {

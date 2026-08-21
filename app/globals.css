@@ -1547,6 +1547,10 @@ td:first-child strong {
   white-space: nowrap;
 }
 
+.settings-list select {
+  max-width: 150px;
+}
+
 .project-key-box {
   display: grid;
   width: 39px;

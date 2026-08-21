@@ -7,12 +7,20 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const projectId = new URL(request.url).searchParams.get("projectId");
+    const departmentId = new URL(request.url).searchParams.get("departmentId");
+    if (!departmentId) {
+      return NextResponse.json(
+        { error: { code: "DEPARTMENT_REQUIRED", message: "Select a department.", details: {} } },
+        { status: 422 }
+      );
+    }
     const projects = await query(
       `SELECT id, key, name, description, created_at, updated_at
        FROM projects
-       WHERE NOT is_archived AND ($1::uuid IS NULL OR id = $1)
+       WHERE NOT is_archived AND department_id = $2
+         AND ($1::uuid IS NULL OR id = $1)
        ORDER BY name`,
-      [projectId]
+      [projectId, departmentId]
     );
     const output = [];
     for (const project of projects.rows) {

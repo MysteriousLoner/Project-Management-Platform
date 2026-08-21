@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const projectId = new URL(request.url).searchParams.get("projectId");
+    const departmentId = new URL(request.url).searchParams.get("departmentId");
     const result = await query(
       `SELECT
         count(*) FILTER (WHERE type = 'ticket' AND NOT is_archived)::int AS ticket_total,
@@ -21,16 +22,22 @@ export async function GET(request: Request) {
             AND NOT is_archived
         )::int AS stale_total
        FROM work_items
-       WHERE ($1::uuid IS NULL OR project_id = $1)`,
-      [projectId]
+       WHERE ($1::uuid IS NULL OR project_id = $1)
+         AND ($2::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM projects p WHERE p.id = work_items.project_id AND p.department_id = $2
+         ))`,
+      [projectId, departmentId]
     );
     const byStatus = await query(
       `SELECT status, count(*)::int AS count
        FROM work_items
        WHERE type = 'ticket' AND NOT is_archived
          AND ($1::uuid IS NULL OR project_id = $1)
+         AND ($2::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM projects p WHERE p.id = work_items.project_id AND p.department_id = $2
+         ))
        GROUP BY status`,
-      [projectId]
+      [projectId, departmentId]
     );
     return NextResponse.json({
       stats: rowToCamel(result.rows[0]),

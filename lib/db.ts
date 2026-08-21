@@ -19,6 +19,24 @@ if (process.env.NODE_ENV !== "production") globalDb.pool = pool;
 const schemaSql = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE TABLE IF NOT EXISTS app_migrations (
+  key text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS departments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name varchar(120) NOT NULL,
+  normalized_name varchar(120) NOT NULL UNIQUE,
+  is_archived boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO departments (name, normalized_name)
+VALUES ('Tech-MY-IT', 'tech-my-it')
+ON CONFLICT (normalized_name) DO NOTHING;
+
 DO $$ BEGIN
   CREATE TYPE work_item_type AS ENUM ('ticket', 'subtask');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -44,6 +62,28 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS user_departments (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  department_id uuid NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, department_id)
+);
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM app_migrations WHERE key = '2026-08-department-backfill'
+  ) THEN
+    INSERT INTO user_departments (user_id, department_id)
+    SELECT users.id, departments.id
+    FROM users
+    CROSS JOIN departments
+    WHERE departments.normalized_name = 'tech-my-it'
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO app_migrations (key) VALUES ('2026-08-department-backfill');
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name varchar(120) NOT NULL,
@@ -54,6 +94,18 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE projects
+  ADD COLUMN IF NOT EXISTS department_id uuid REFERENCES departments(id);
+
+UPDATE projects
+SET department_id = (
+  SELECT id FROM departments WHERE normalized_name = 'tech-my-it'
+)
+WHERE department_id IS NULL;
+
+ALTER TABLE projects
+  ALTER COLUMN department_id SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS work_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -162,6 +214,10 @@ CREATE INDEX IF NOT EXISTS idx_attachments_work_item
   ON attachments(work_item_id, removed_at);
 CREATE INDEX IF NOT EXISTS idx_audit_project
   ON audit_events(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_department
+  ON projects(department_id, is_archived, name);
+CREATE INDEX IF NOT EXISTS idx_user_departments_department
+  ON user_departments(department_id, user_id);
 `;
 
 export async function ensureSchema() {

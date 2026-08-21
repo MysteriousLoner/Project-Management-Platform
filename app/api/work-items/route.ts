@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, rowToCamel, transaction } from "@/lib/db";
-import { audit, mapRows, requireActor, workItemSelect } from "@/lib/domain";
+import { audit, mapRows, requireActor, validateProjectPeople, workItemSelect } from "@/lib/domain";
 import { sendPushToUser } from "@/lib/push";
 import { STATUS_LABELS, SUBTASK_STATUSES, type WorkStatus } from "@/lib/types";
 import { workItemInputSchema, workItemPatchSchema } from "@/lib/validation";
@@ -20,6 +20,9 @@ export async function GET(request: Request) {
 
     if (params.get("id")) add("wi.id = ?", params.get("id"));
     if (params.get("projectId")) add("wi.project_id = ?", params.get("projectId"));
+    if (params.get("departmentId")) {
+      add("EXISTS (SELECT 1 FROM projects scope_project WHERE scope_project.id = wi.project_id AND scope_project.department_id = ?)", params.get("departmentId"));
+    }
     if (params.get("parentId")) add("wi.parent_id = ?", params.get("parentId"));
     if (params.get("type")) add("wi.type = ?::work_item_type", params.get("type"));
     if (params.get("status")) add("wi.status = ?::work_item_status", params.get("status"));
@@ -70,6 +73,10 @@ export async function POST(request: Request) {
     await requireActor(actor);
     const input = workItemInputSchema.parse(await requestJson(request));
     const item = await transaction(async (client) => {
+      await validateProjectPeople(client, input.projectId, {
+        assigneeId: input.assigneeId,
+        reportToId: input.type === "ticket" ? input.reportToId : null
+      });
       let key: string;
       let ticketNumber: number | null = null;
       if (input.type === "ticket") {
@@ -150,6 +157,12 @@ export async function PATCH(request: Request) {
       const existing = await client.query("SELECT * FROM work_items WHERE id = $1 FOR UPDATE", [id]);
       if (!existing.rowCount) throw new ApiError(404, "WORK_ITEM_NOT_FOUND", "Work item not found.");
       const current = existing.rows[0];
+      if (patch.assigneeId !== undefined || patch.reportToId !== undefined) {
+        await validateProjectPeople(client, current.project_id, {
+          assigneeId: patch.assigneeId === undefined ? current.assignee_id : patch.assigneeId,
+          reportToId: patch.reportToId === undefined ? current.report_to_id : patch.reportToId
+        });
+      }
       if (current.type === "subtask" && patch.reportToId !== undefined) {
         throw new ApiError(422, "REPORT_TO_NOT_ALLOWED", "Report To is only available for tickets.");
       }

@@ -14,6 +14,7 @@ import {
   TICKET_STATUSES,
   type Attachment,
   type Comment,
+  type Department,
   type Project,
   type User,
   type WorkItem,
@@ -27,6 +28,7 @@ type View = "dashboard" | "tickets" | "blocked" | "review" | "activity" | "setti
 type ChatScopeMode = "global" | "project";
 type ChatScopeResponse = {
   mode: ChatScopeMode;
+  departmentId: string;
   projectId: string | null;
   projectName: string | null;
   projectCount: number;
@@ -224,8 +226,10 @@ function Modal({
 export default function ProjectManager() {
   const { locale, setLocale, t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [actor, setActor] = useState<User | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<WorkItem[]>([]);
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
@@ -243,7 +247,12 @@ export default function ProjectManager() {
   const [chatOpen, setChatOpen] = useState(false);
 
   const actorId = actor?.id ?? null;
+  const departmentId = department?.id ?? null;
   const projectId = project?.id ?? null;
+  const departmentUsers = useMemo(
+    () => users.filter((user) => departmentId && user.departmentIds.includes(departmentId)),
+    [users, departmentId]
+  );
 
   const showMessage = useCallback((message: string) => {
     setNotice(message);
@@ -258,17 +267,29 @@ export default function ProjectManager() {
     const current = payload.users.find((user) => user.id === stored) ?? null;
     setActor(current);
     setShowUserPicker(!current);
+    return payload.users;
+  }, []);
+
+  const loadDepartments = useCallback(async () => {
+    const payload = await api<{ departments: Department[] }>("/api/departments?includeArchived=true");
+    setDepartments(payload.departments);
+    return payload.departments;
   }, []);
 
   const loadProjects = useCallback(async () => {
-    const payload = await api<{ projects: Project[] }>("/api/projects");
+    if (!departmentId) {
+      setProjects([]);
+      setProject(null);
+      return;
+    }
+    const payload = await api<{ projects: Project[] }>(`/api/projects?departmentId=${departmentId}`);
     setProjects(payload.projects);
     const stored =
       localStorage.getItem("xieceda.projectId") ?? localStorage.getItem("planeo.projectId");
     const current = payload.projects.find((entry) => entry.id === stored) ?? payload.projects[0] ?? null;
     setProject(current);
     if (current) localStorage.setItem("xieceda.projectId", current.id);
-  }, []);
+  }, [departmentId]);
 
   const loadProjectData = useCallback(async () => {
     if (!projectId) {
@@ -277,27 +298,60 @@ export default function ProjectManager() {
       return;
     }
     const [workPayload, statsPayload] = await Promise.all([
-      api<{ items: WorkItem[] }>(`/api/work-items?projectId=${projectId}&limit=500`),
-      api<{ stats: Stats; byStatus: Record<string, number> }>(`/api/stats?projectId=${projectId}`)
+      api<{ items: WorkItem[] }>(`/api/work-items?projectId=${projectId}&departmentId=${departmentId}&limit=500`),
+      api<{ stats: Stats; byStatus: Record<string, number> }>(`/api/stats?projectId=${projectId}&departmentId=${departmentId}`)
     ]);
     setItems(workPayload.items);
     setStats(statsPayload.stats);
     setByStatus(statsPayload.byStatus);
-  }, [projectId]);
+  }, [projectId, departmentId]);
 
   const loadActivity = useCallback(async () => {
     if (!projectId) return;
-    const payload = await api<{ events: ActivityEvent[] }>(`/api/activity?projectId=${projectId}`);
+    const payload = await api<{ events: ActivityEvent[] }>(`/api/activity?projectId=${projectId}&departmentId=${departmentId}`);
     setActivity(payload.events);
-  }, [projectId]);
+  }, [projectId, departmentId]);
 
   useEffect(() => {
     // Async bootstrap synchronizes client state with the server on first mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    Promise.all([loadIdentity(), loadProjects()])
+    Promise.all([loadIdentity(), loadDepartments()])
+      .then(([loadedUsers, loadedDepartments]) => {
+        const storedActorId =
+          localStorage.getItem("xieceda.actorId") ?? localStorage.getItem("planeo.actorId");
+        const currentActor = loadedUsers.find((user) => user.id === storedActorId) ?? null;
+        if (!currentActor) return;
+        const storedDepartmentId = localStorage.getItem(`xieceda.departmentId.${currentActor.id}`);
+        const currentDepartment =
+          loadedDepartments.find(
+            (entry) => !entry.isArchived && entry.id === storedDepartmentId && currentActor.departmentIds.includes(entry.id)
+          ) ??
+          loadedDepartments.find((entry) => !entry.isArchived && currentActor.departmentIds.includes(entry.id)) ??
+          null;
+        setDepartment(currentDepartment);
+      })
       .catch((cause) => setError(cause.message))
       .finally(() => setLoading(false));
-  }, [loadIdentity, loadProjects]);
+  }, [loadIdentity, loadDepartments]);
+
+  useEffect(() => {
+    // Department changes reload the project collection from the server.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadProjects().catch((cause) => setError(cause.message));
+  }, [loadProjects]);
+
+  useEffect(() => {
+    if (!actor) return;
+    if (department && !department.isArchived && actor.departmentIds.includes(department.id)) return;
+    const next = departments.find(
+      (entry) => !entry.isArchived && actor.departmentIds.includes(entry.id)
+    ) ?? null;
+    // Membership refreshes can invalidate the currently selected department.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDepartment(next);
+    setProject(null);
+    if (next) localStorage.setItem(`xieceda.departmentId.${actor.id}`, next.id);
+  }, [actor, department, departments]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -313,7 +367,7 @@ export default function ProjectManager() {
     if (!actorId || !projects.length) return;
     const ticketId = new URLSearchParams(window.location.search).get("ticket");
     if (!ticketId) return;
-    api<{ item: WorkItem }>(`/api/work-items?id=${ticketId}`)
+    api<{ item: WorkItem }>(`/api/work-items?id=${ticketId}&departmentId=${departmentId}`)
       .then(({ item }) => {
         const owningProject = projects.find((entry) => entry.id === item.projectId);
         if (owningProject) selectProject(owningProject.id);
@@ -323,12 +377,12 @@ export default function ProjectManager() {
       .catch((cause) => setError(cause.message));
     // This runs only when a notification deep link is present.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actorId, projects]);
+  }, [actorId, departmentId, projects]);
 
   async function refreshAll(message?: string) {
-    await Promise.all([loadProjectData(), loadProjects(), loadIdentity()]);
+    await Promise.all([loadProjectData(), loadProjects(), loadIdentity(), loadDepartments()]);
     if (selected) {
-      const payload = await api<{ item: WorkItem }>(`/api/work-items?id=${selected.id}`);
+      const payload = await api<{ item: WorkItem }>(`/api/work-items?id=${selected.id}&departmentId=${departmentId}`);
       setSelected(payload.item);
     }
     if (message) showMessage(message);
@@ -337,7 +391,24 @@ export default function ProjectManager() {
   function selectActor(user: User) {
     localStorage.setItem("xieceda.actorId", user.id);
     setActor(user);
+    const storedDepartmentId = localStorage.getItem(`xieceda.departmentId.${user.id}`);
+    const nextDepartment =
+      departments.find((entry) => !entry.isArchived && entry.id === storedDepartmentId && user.departmentIds.includes(entry.id)) ??
+      departments.find((entry) => !entry.isArchived && user.departmentIds.includes(entry.id)) ??
+      null;
+    setDepartment(nextDepartment);
+    setProject(null);
+    setSelected(null);
     setShowUserPicker(false);
+  }
+
+  function selectDepartment(departmentIdToSelect: string) {
+    if (!actor?.departmentIds.includes(departmentIdToSelect)) return;
+    const next = departments.find((entry) => entry.id === departmentIdToSelect) ?? null;
+    setDepartment(next);
+    setProject(null);
+    setSelected(null);
+    if (next) localStorage.setItem(`xieceda.departmentId.${actor.id}`, next.id);
   }
 
   function selectProject(projectIdToSelect: string) {
@@ -381,6 +452,21 @@ export default function ProjectManager() {
           <img className="brand-app-icon" src={appPath("/icons/icon-192.png")} alt="" />
           <span>协策达</span>
         </div>
+        <label className="project-select-label">
+          <span>{t("sidebar.currentDepartment")}</span>
+          <select
+            value={departmentId ?? ""}
+            onChange={(event) => selectDepartment(event.target.value)}
+            aria-label={t("sidebar.currentDepartment")}
+          >
+            {!department && <option value="">{t("sidebar.noDepartments")}</option>}
+            {departments
+              .filter((entry) => !entry.isArchived && actor?.departmentIds.includes(entry.id))
+              .map((entry) => (
+                <option key={entry.id} value={entry.id}>{entry.name}</option>
+              ))}
+          </select>
+        </label>
         <label className="project-select-label">
           <span>{t("sidebar.currentProject")}</span>
           <select
@@ -459,7 +545,7 @@ export default function ProjectManager() {
             </label>
             <a
               className="button button-ghost"
-              href={appPath(`/api/export${projectId ? `?projectId=${projectId}` : ""}`)}
+              href={appPath(`/api/export?departmentId=${departmentId ?? ""}${projectId ? `&projectId=${projectId}` : ""}`)}
               target="_blank"
             >
               {t("header.jsonApi")}
@@ -496,7 +582,7 @@ export default function ProjectManager() {
             {view === "tickets" && (
               <TicketsView
                 tickets={tickets}
-                users={users}
+                users={departmentUsers}
                 search={search}
                 setSearch={setSearch}
                 statusFilter={statusFilter}
@@ -527,9 +613,17 @@ export default function ProjectManager() {
             {view === "activity" && <ActivityView events={activity} />}
             {view === "settings" && (
               <SettingsView
-                users={users}
+                users={departmentUsers}
+                allUsers={users}
+                departments={departments}
+                department={department}
                 projects={projects}
                 actorId={actorId}
+                onDepartmentSelected={(entry) => {
+                  setDepartment(entry);
+                  setProject(null);
+                  if (actor) localStorage.setItem(`xieceda.departmentId.${actor.id}`, entry.id);
+                }}
                 onChanged={refreshAll}
                 onError={(message) => setError(message)}
               />
@@ -546,6 +640,8 @@ export default function ProjectManager() {
       {showUserPicker && (
         <UserPicker
           users={users}
+          departments={departments}
+          defaultDepartmentId={departmentId ?? departments.find((entry) => !entry.isArchived)?.id ?? ""}
           onSelect={selectActor}
           onUsersChanged={loadIdentity}
           onClose={actor ? () => setShowUserPicker(false) : undefined}
@@ -555,7 +651,7 @@ export default function ProjectManager() {
         <WorkItemForm
           title={t("form.createTicket")}
           projectId={project.id}
-          users={users}
+          users={departmentUsers}
           actorId={actor.id}
           type="ticket"
           onClose={() => setShowTicketForm(false)}
@@ -567,7 +663,7 @@ export default function ProjectManager() {
                 : t("form.createTicket")
             );
             uploadErrors.forEach((message) => setError(message));
-            const payload = await api<{ item: WorkItem }>(`/api/work-items?id=${item.id}`);
+            const payload = await api<{ item: WorkItem }>(`/api/work-items?id=${item.id}&departmentId=${departmentId}`);
             setSelected(payload.item);
           }}
         />
@@ -577,7 +673,7 @@ export default function ProjectManager() {
           key={selected.id}
           initialItem={selected}
           actor={actor}
-          users={users}
+          users={departmentUsers}
           onClose={() => setSelected(null)}
           onChanged={async (message) => {
             await refreshAll(message);
@@ -586,9 +682,10 @@ export default function ProjectManager() {
           onError={setError}
         />
       )}
-      {chatOpen && actor && (
+      {chatOpen && actor && department && (
         <ChatPanel
           actorId={actor.id}
+          departmentId={department.id}
           selectedProject={project}
           projects={projects}
           onClose={() => setChatOpen(false)}
@@ -615,17 +712,22 @@ function EmptyProject({ onOpenSettings }: { onOpenSettings: () => void }) {
 
 function UserPicker({
   users,
+  departments,
+  defaultDepartmentId,
   onSelect,
   onUsersChanged,
   onClose
 }: {
   users: User[];
+  departments: Department[];
+  defaultDepartmentId: string;
   onSelect: (user: User) => void;
-  onUsersChanged: () => Promise<void>;
+  onUsersChanged: () => Promise<unknown>;
   onClose?: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState("");
+  const [departmentId, setDepartmentId] = useState(defaultDepartmentId || departments.find((entry) => !entry.isArchived)?.id || "");
   const [adding, setAdding] = useState(users.length === 0);
   const [error, setError] = useState("");
 
@@ -634,7 +736,7 @@ function UserPicker({
     try {
       const payload = await api<{ user: User }>("/api/users", {
         method: "POST",
-        body: JSON.stringify({ displayName: name })
+        body: JSON.stringify({ displayName: name, departmentId })
       });
       await onUsersChanged();
       onSelect(payload.user);
@@ -682,6 +784,15 @@ function UserPicker({
                 maxLength={100}
                 required
               />
+            </label>
+            <label>
+              {t("department.name")}
+              <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} required>
+                <option value="">{t("department.select")}</option>
+                {departments.filter((entry) => !entry.isArchived).map((entry) => (
+                  <option key={entry.id} value={entry.id}>{entry.name}</option>
+                ))}
+              </select>
             </label>
             {error && <p className="form-error">{error}</p>}
             <button className="button button-primary full-width" type="submit">
@@ -1713,27 +1824,44 @@ function WorkItemDetail({
 
 function SettingsView({
   users,
+  allUsers,
+  departments,
+  department,
   projects,
   actorId,
+  onDepartmentSelected,
   onChanged,
   onError
 }: {
   users: User[];
+  allUsers: User[];
+  departments: Department[];
+  department: Department | null;
   projects: Project[];
   actorId: string | null;
+  onDepartmentSelected: (department: Department) => void;
   onChanged: (message?: string) => Promise<void>;
   onError: (message: string) => void;
 }) {
   const { locale, setLocale, t } = useI18n();
   const [projectForm, setProjectForm] = useState({ name: "", key: "", description: "" });
   const [userName, setUserName] = useState("");
+  const [userDepartmentId, setUserDepartmentId] = useState(department?.id ?? departments[0]?.id ?? "");
+  const [departmentName, setDepartmentName] = useState("");
+  const [memberToAdd, setMemberToAdd] = useState("");
+
+  useEffect(() => {
+    // Keep the new-user form default aligned with the department being managed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (department) setUserDepartmentId(department.id);
+  }, [department]);
 
   async function createProject(event: FormEvent) {
     event.preventDefault();
     try {
       const payload = await api<{ project: Project }>(
         "/api/projects",
-        { method: "POST", body: JSON.stringify(projectForm) },
+        { method: "POST", body: JSON.stringify({ ...projectForm, departmentId: department?.id }) },
         actorId
       );
       setProjectForm({ name: "", key: "", description: "" });
@@ -1749,10 +1877,70 @@ function SettingsView({
     try {
       await api("/api/users", {
         method: "POST",
-        body: JSON.stringify({ displayName: userName })
+        body: JSON.stringify({ displayName: userName, departmentId: userDepartmentId })
       });
       setUserName("");
       await onChanged("User created");
+    } catch (cause) {
+      onError((cause as Error).message);
+    }
+  }
+
+  async function createDepartment(event: FormEvent) {
+    event.preventDefault();
+    try {
+      const payload = await api<{ department: Department }>(
+        "/api/departments",
+        { method: "POST", body: JSON.stringify({ name: departmentName }) },
+        actorId
+      );
+      setDepartmentName("");
+      await onChanged(t("department.created"));
+      onDepartmentSelected(payload.department);
+    } catch (cause) {
+      onError((cause as Error).message);
+    }
+  }
+
+  async function changeMembership(method: "POST" | "DELETE", userId: string, departmentId: string) {
+    try {
+      await api(
+        "/api/departments/memberships",
+        { method, body: JSON.stringify({ userId, departmentId }) },
+        actorId
+      );
+      setMemberToAdd("");
+      await onChanged(method === "POST" ? t("department.memberAdded") : t("department.memberRemoved"));
+      if (method === "POST" && userId === actorId) {
+        const entry = departments.find((item) => item.id === departmentId);
+        if (entry) onDepartmentSelected(entry);
+      }
+    } catch (cause) {
+      onError((cause as Error).message);
+    }
+  }
+
+  async function moveProject(projectId: string, departmentId: string) {
+    try {
+      await api(
+        "/api/projects",
+        { method: "PATCH", body: JSON.stringify({ id: projectId, departmentId }) },
+        actorId
+      );
+      await onChanged(t("department.projectMoved"));
+    } catch (cause) {
+      onError((cause as Error).message);
+    }
+  }
+
+  async function toggleDepartment(entry: Department) {
+    try {
+      await api(
+        "/api/departments",
+        { method: "PATCH", body: JSON.stringify({ id: entry.id, isArchived: !entry.isArchived }) },
+        actorId
+      );
+      await onChanged(entry.isArchived ? t("restored") : t("archived"));
     } catch (cause) {
       onError((cause as Error).message);
     }
@@ -1773,6 +1961,34 @@ function SettingsView({
 
   return (
     <div className="settings-grid">
+      <section className="panel settings-section settings-wide">
+        <span className="eyebrow">{t("department.eyebrow")}</span>
+        <h2>{t("department.manage")}</h2>
+        <p className="muted">{t("department.description")}</p>
+        <form className="inline-form inset-form" onSubmit={createDepartment}>
+          <input value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} placeholder={t("department.newName")} required />
+          <button className="button button-secondary">{t("department.create")}</button>
+        </form>
+        <div className="settings-list">
+          {departments.map((entry) => {
+            const joined = allUsers.find((user) => user.id === actorId)?.departmentIds.includes(entry.id);
+            return (
+              <div key={entry.id}>
+                <span className="project-key-box">{entry.name.slice(0, 2).toUpperCase()}</span>
+                <span><strong>{entry.name}</strong><small>{joined ? t("department.joined") : t("department.notJoined")}</small></span>
+                {entry.isArchived ? (
+                  <button className="text-button" onClick={() => toggleDepartment(entry)}>{t("restore")}</button>
+                ) : !joined && actorId ? (
+                  <button className="text-button" onClick={() => changeMembership("POST", actorId, entry.id)}>{t("department.join")}</button>
+                ) : (
+                  <button className="text-button danger-text" onClick={() => toggleDepartment(entry)}>{t("archive")}</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="panel settings-section">
         <span className="eyebrow">{t("settings.projects")}</span>
         <h2>{t("settings.projectGroups")}</h2>
@@ -1822,6 +2038,9 @@ function SettingsView({
                 <strong>{entry.name}</strong>
                 <small>{entry.description || t("settings.noDescription")}</small>
               </span>
+              <select aria-label={t("department.moveProject")} value={entry.departmentId} onChange={(event) => moveProject(entry.id, event.target.value)}>
+                {departments.filter((option) => !option.isArchived).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
               <button className="text-button danger-text" onClick={() => toggleArchive("projects", entry.id, entry.isArchived)}>
                 {t("archive")}
               </button>
@@ -1834,15 +2053,29 @@ function SettingsView({
         <span className="eyebrow">{t("settings.people")}</span>
         <h2>{t("settings.users")}</h2>
         <p className="muted">{t("settings.usersDescription")}</p>
-        <form className="inline-form inset-form" onSubmit={createUser}>
+        <form className="stack-form inset-form" onSubmit={createUser}>
           <input
             value={userName}
             onChange={(event) => setUserName(event.target.value)}
             placeholder={t("settings.newName")}
             required
           />
+          <select value={userDepartmentId} onChange={(event) => setUserDepartmentId(event.target.value)} required>
+            {departments.filter((entry) => !entry.isArchived).map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+          </select>
           <button className="button button-secondary">{t("settings.addUser")}</button>
         </form>
+        {department && (
+          <form className="inline-form inset-form" onSubmit={(event) => { event.preventDefault(); if (memberToAdd) changeMembership("POST", memberToAdd, department.id); }}>
+            <select value={memberToAdd} onChange={(event) => setMemberToAdd(event.target.value)} required>
+              <option value="">{t("department.addExisting")}</option>
+              {allUsers.filter((user) => !user.departmentIds.includes(department.id)).map((user) => (
+                <option key={user.id} value={user.id}>{user.displayName}</option>
+              ))}
+            </select>
+            <button className="button button-secondary">{t("department.addMember")}</button>
+          </form>
+        )}
         <div className="settings-list">
           {users.map((user) => (
             <div key={user.id}>
@@ -1851,6 +2084,12 @@ function SettingsView({
                 <strong>{user.displayName}</strong>
                 <small>{t("settings.activeUser")}</small>
               </span>
+              <button
+                className="text-button danger-text"
+                onClick={() => department && changeMembership("DELETE", user.id, department.id)}
+              >
+                {t("department.removeMember")}
+              </button>
               <button
                 className="text-button danger-text"
                 disabled={user.id === actorId}
@@ -1902,11 +2141,13 @@ function SettingsView({
 
 function ChatPanel({
   actorId,
+  departmentId,
   selectedProject,
   projects,
   onClose
 }: {
   actorId: string;
+  departmentId: string;
   selectedProject: Project | null;
   projects: Project[];
   onClose: () => void;
@@ -1968,6 +2209,7 @@ function ChatPanel({
           body: JSON.stringify({
             question: prompt,
             scopeMode,
+            departmentId,
             projectId: scopeMode === "project" ? scopeProject?.id ?? null : null
           })
         },

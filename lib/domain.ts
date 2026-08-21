@@ -13,6 +13,53 @@ export async function requireActor(id: string) {
   return result.rows[0];
 }
 
+export async function requireActiveDepartment(id: string) {
+  const result = await query(
+    "SELECT id, name FROM departments WHERE id = $1 AND is_archived = false",
+    [id]
+  );
+  if (!result.rowCount) {
+    throw new ApiError(400, "DEPARTMENT_INVALID", "The selected department does not exist or is archived.");
+  }
+  return result.rows[0];
+}
+
+export async function requireMembership(userId: string, departmentId: string) {
+  const result = await query(
+    `SELECT 1 FROM user_departments ud
+     JOIN departments d ON d.id = ud.department_id AND NOT d.is_archived
+     WHERE ud.user_id = $1 AND ud.department_id = $2`,
+    [userId, departmentId]
+  );
+  if (!result.rowCount) {
+    throw new ApiError(422, "DEPARTMENT_MEMBERSHIP_REQUIRED", "The selected user is not a member of this department.");
+  }
+}
+
+export async function validateProjectPeople(
+  client: PoolClient,
+  projectId: string,
+  people: { assigneeId?: string | null; reportToId?: string | null }
+) {
+  const ids = [...new Set([people.assigneeId, people.reportToId].filter(Boolean))] as string[];
+  if (!ids.length) return;
+  const result = await client.query(
+    `SELECT u.id
+     FROM users u
+     JOIN user_departments ud ON ud.user_id = u.id
+     JOIN projects p ON p.department_id = ud.department_id
+     WHERE p.id = $1 AND u.id = ANY($2::uuid[]) AND NOT u.is_archived`,
+    [projectId, ids]
+  );
+  if (result.rowCount !== ids.length) {
+    throw new ApiError(
+      422,
+      "PROJECT_DEPARTMENT_USER_REQUIRED",
+      "Assignee and Report To users must be active members of the project's department."
+    );
+  }
+}
+
 export async function audit(
   client: PoolClient,
   input: {

@@ -5,13 +5,19 @@ export const idSchema = z.string().uuid();
 
 export const userInputSchema = z.object({
   displayName: z.string().trim().min(1).max(100),
-  avatarColor: z.string().trim().max(20).optional()
+  avatarColor: z.string().trim().max(20).optional(),
+  departmentId: idSchema
+});
+
+export const departmentInputSchema = z.object({
+  name: z.string().trim().min(1).max(120)
 });
 
 export const projectInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   key: z.string().trim().min(2).max(10).regex(/^[A-Za-z][A-Za-z0-9]*$/),
-  description: z.string().max(10000).optional().default("")
+  description: z.string().max(10000).optional().default(""),
+  departmentId: idSchema
 });
 
 export const workItemInputSchema = z

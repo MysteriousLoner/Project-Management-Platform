@@ -22,6 +22,15 @@ export type User = {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  departmentIds: string[];
+};
+
+export type Department = {
+  id: string;
+  name: string;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Project = {
@@ -29,6 +38,8 @@ export type Project = {
   name: string;
   key: string;
   description: string | null;
+  departmentId: string;
+  departmentName: string;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
