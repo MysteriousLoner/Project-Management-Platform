@@ -63,6 +63,7 @@ export type WorkItem = {
   updatedById: string;
   updatedByName: string;
   blockedReason: string | null;
+  startDateTime: string | null;
   estimatedCompletionDate: string | null;
   isArchived: boolean;
   createdAt: string;

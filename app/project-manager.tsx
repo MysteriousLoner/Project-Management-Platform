@@ -83,6 +83,17 @@ function formatDate(value?: string | null, withTime = false, locale: Locale = "e
   }).format(new Date(value));
 }
 
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
 function relativeTime(value: string, locale: Locale = "en") {
   const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
   const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -994,6 +1005,7 @@ function TicketsView({
               <th>{t("tickets.columnAssignee")}</th>
               <th>{t("tickets.columnReportTo")}</th>
               <th>{t("tickets.columnProgress")}</th>
+              <th>{t("tickets.columnStart")}</th>
               <th>{t("tickets.columnEstimate")}</th>
               <th>{t("tickets.columnUpdated")}</th>
             </tr>
@@ -1039,6 +1051,7 @@ function TicketsView({
                       {item.subtaskCompleted}/{item.subtaskTotal}
                     </small>
                   </td>
+                  <td>{formatDate(item.startDateTime, true, locale)}</td>
                   <td>{formatDate(item.estimatedCompletionDate, false, locale)}</td>
                   <td>{relativeTime(item.updatedAt, locale)}</td>
                 </tr>
@@ -1160,6 +1173,7 @@ function WorkItemForm({
     description: "",
     assigneeId: "",
     reportToId: "",
+    startDateTime: "",
     estimatedCompletionDate: ""
   });
   const [files, setFiles] = useState<File[]>([]);
@@ -1183,6 +1197,8 @@ function WorkItemForm({
             description: form.description,
             assigneeId: form.assigneeId || null,
             reportToId: type === "ticket" ? form.reportToId || null : null,
+            startDateTime:
+              type === "ticket" ? fromDateTimeLocal(form.startDateTime) : null,
             estimatedCompletionDate: form.estimatedCompletionDate || null
           })
         },
@@ -1324,16 +1340,26 @@ function WorkItemForm({
           )}
         </div>
         {type === "ticket" && (
-          <label>
-            {t("form.estimated")}
-            <input
-              type="date"
-              value={form.estimatedCompletionDate}
-              onChange={(event) =>
-                setForm({ ...form, estimatedCompletionDate: event.target.value })
-              }
-            />
-          </label>
+          <div className="form-row">
+            <label>
+              {t("form.startDateTime")}
+              <input
+                type="datetime-local"
+                value={form.startDateTime}
+                onChange={(event) => setForm({ ...form, startDateTime: event.target.value })}
+              />
+            </label>
+            <label>
+              {t("form.estimated")}
+              <input
+                type="date"
+                value={form.estimatedCompletionDate}
+                onChange={(event) =>
+                  setForm({ ...form, estimatedCompletionDate: event.target.value })
+                }
+              />
+            </label>
+          </div>
         )}
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
@@ -1693,6 +1719,21 @@ function WorkItemDetail({
                     </option>
                   ))}
                 </select>
+              </label>
+            )}
+            {item.type === "ticket" && (
+              <label>
+                {t("form.startDateTime")}
+                <input
+                  type="datetime-local"
+                  value={toDateTimeLocal(item.startDateTime)}
+                  onChange={(event) =>
+                    patch(
+                      { startDateTime: fromDateTimeLocal(event.target.value) },
+                      t("detail.startUpdated")
+                    )
+                  }
+                />
               </label>
             )}
             <label>

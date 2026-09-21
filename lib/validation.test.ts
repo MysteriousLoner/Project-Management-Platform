@@ -71,6 +71,27 @@ describe("work-item validation", () => {
     expect(result.estimatedCompletionDate).toBe("2026-09-30");
   });
 
+  it("accepts a start date and time on tickets and rejects it on subtasks", () => {
+    const startDateTime = "2026-09-21T09:30:00.000Z";
+    expect(
+      workItemInputSchema.parse({
+        projectId,
+        type: "ticket",
+        title: "Coordinate launch",
+        startDateTime
+      }).startDateTime
+    ).toBe(startDateTime);
+    expect(
+      workItemInputSchema.safeParse({
+        projectId,
+        parentId,
+        type: "subtask",
+        title: "Coordinate launch",
+        startDateTime
+      }).success
+    ).toBe(false);
+  });
+
   it("allows Report To on tickets and rejects it on subtasks", () => {
     const reportToId = "33333333-3333-4333-8333-333333333333";
     expect(

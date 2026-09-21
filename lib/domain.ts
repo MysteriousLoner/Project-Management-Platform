@@ -101,7 +101,7 @@ export const workItemSelect = `
     wi.report_to_id, reporter.display_name AS report_to_name,
     wi.created_by_id, creator.display_name AS created_by_name,
     wi.updated_by_id, updater.display_name AS updated_by_name,
-    wi.blocked_reason, wi.estimated_completion_date, wi.is_archived,
+    wi.blocked_reason, wi.start_date_time, wi.estimated_completion_date, wi.is_archived,
     wi.created_at, wi.updated_at, wi.completed_at,
     COALESCE(progress.subtask_total, 0)::int AS subtask_total,
     COALESCE(progress.subtask_completed, 0)::int AS subtask_completed,

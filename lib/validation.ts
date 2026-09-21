@@ -31,6 +31,7 @@ export const workItemInputSchema = z
     assigneeId: idSchema.nullable().optional(),
     reportToId: idSchema.nullable().optional(),
     blockedReason: z.string().trim().max(10000).nullable().optional(),
+    startDateTime: z.iso.datetime({ offset: true }).nullable().optional(),
     estimatedCompletionDate: z.iso.date().nullable().optional()
   })
   .superRefine((value, context) => {
@@ -42,6 +43,9 @@ export const workItemInputSchema = z
     }
     if (value.type === "subtask" && value.reportToId) {
       context.addIssue({ code: "custom", message: "Report To is only available for tickets." });
+    }
+    if (value.type === "subtask" && value.startDateTime) {
+      context.addIssue({ code: "custom", message: "Start date and time is only available for tickets." });
     }
     if (value.type === "subtask" && !SUBTASK_STATUSES.includes(value.status as never)) {
       context.addIssue({ code: "custom", message: "Ready for Review is not available for subtasks." });
@@ -58,6 +62,7 @@ export const workItemPatchSchema = z.object({
   assigneeId: idSchema.nullable().optional(),
   reportToId: idSchema.nullable().optional(),
   blockedReason: z.string().trim().max(10000).nullable().optional(),
+  startDateTime: z.iso.datetime({ offset: true }).nullable().optional(),
   estimatedCompletionDate: z.iso.date().nullable().optional(),
   isArchived: z.boolean().optional()
 });

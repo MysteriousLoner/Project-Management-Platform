@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS work_items (
   created_by_id uuid NOT NULL REFERENCES users(id),
   updated_by_id uuid NOT NULL REFERENCES users(id),
   blocked_reason text,
+  start_date_time timestamptz,
   estimated_completion_date date,
   position bigint NOT NULL DEFAULT 0,
   is_archived boolean NOT NULL DEFAULT false,
@@ -142,6 +143,9 @@ CREATE TABLE IF NOT EXISTS work_items (
 
 ALTER TABLE work_items
   ADD COLUMN IF NOT EXISTS report_to_id uuid REFERENCES users(id);
+
+ALTER TABLE work_items
+  ADD COLUMN IF NOT EXISTS start_date_time timestamptz;
 
 CREATE TABLE IF NOT EXISTS push_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),

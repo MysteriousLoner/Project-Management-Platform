@@ -111,8 +111,8 @@ export async function POST(request: Request) {
         `INSERT INTO work_items (
           project_id, type, parent_id, ticket_number, key, title, description, status,
           assignee_id, report_to_id, created_by_id, updated_by_id, blocked_reason,
-          estimated_completion_date
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13)
+          start_date_time, estimated_completion_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13, $14)
         RETURNING *`,
         [
           input.projectId,
@@ -127,6 +127,7 @@ export async function POST(request: Request) {
           input.type === "ticket" ? input.reportToId ?? null : null,
           actor,
           input.blockedReason ?? null,
+          input.type === "ticket" ? input.startDateTime ?? null : null,
           input.estimatedCompletionDate ?? null
         ]
       );
@@ -135,7 +136,13 @@ export async function POST(request: Request) {
         workItemId: result.rows[0].id,
         actorId: actor,
         action: "created",
-        newValue: { key, title: input.title, type: input.type, status: input.status }
+        newValue: {
+          key,
+          title: input.title,
+          type: input.type,
+          status: input.status,
+          startDateTime: input.type === "ticket" ? input.startDateTime ?? null : null
+        }
       });
       return rowToCamel(result.rows[0]);
     });
@@ -165,6 +172,13 @@ export async function PATCH(request: Request) {
       }
       if (current.type === "subtask" && patch.reportToId !== undefined) {
         throw new ApiError(422, "REPORT_TO_NOT_ALLOWED", "Report To is only available for tickets.");
+      }
+      if (current.type === "subtask" && patch.startDateTime !== undefined) {
+        throw new ApiError(
+          422,
+          "START_DATE_TIME_NOT_ALLOWED",
+          "Start date and time is only available for tickets."
+        );
       }
       const statusChanged = Boolean(patch.status && patch.status !== current.status);
       const progressForTicket = async (ticketId: string) => {
@@ -212,6 +226,7 @@ export async function PATCH(request: Request) {
         assigneeId: "assignee_id",
         reportToId: "report_to_id",
         blockedReason: "blocked_reason",
+        startDateTime: "start_date_time",
         estimatedCompletionDate: "estimated_completion_date",
         isArchived: "is_archived"
       } as const;

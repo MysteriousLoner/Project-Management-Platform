@@ -39,7 +39,8 @@ export async function POST(request: Request) {
     }
     const itemResult = await query(
       `SELECT wi.id, wi.project_id, wi.type, wi.parent_id, wi.key, wi.title,
-              wi.description, wi.status, wi.blocked_reason, wi.estimated_completion_date,
+              wi.description, wi.status, wi.blocked_reason, wi.start_date_time,
+              wi.estimated_completion_date,
               wi.created_at, wi.updated_at, wi.completed_at,
               u.display_name AS assignee_name,
               wi.report_to_id, reporter.display_name AS report_to_name
