@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, transaction } from "@/lib/db";
@@ -8,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const body = await requestJson(request);
     const userId = idSchema.parse(body.userId);
@@ -36,7 +38,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const body = await requestJson(request);
     const userId = idSchema.parse(body.userId);

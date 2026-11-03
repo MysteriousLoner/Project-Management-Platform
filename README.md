@@ -71,11 +71,36 @@ npm test
 npm run build
 ```
 
-## Identity and security
+## Accounts and shared knowledge
 
-Selecting a user records the actor for changes and comments. It is not authentication. Department selection is organizational filtering rather than a security boundary: anyone who can reach the application can select any active user, join departments, or call APIs with another department ID. Keep the application on a trusted internal network.
+Every employee signs in by selecting their name and entering their password. Everyone has the same workspace features; there are no administrator or manager roles. Departments organize tickets and assignments, while project knowledge and work reports are shared across teams.
 
-LLM credentials are read only by the server. They are never sent to the browser or returned by an API.
+Before starting, configure `BETTER_AUTH_URL`, a private random `BETTER_AUTH_SECRET` (at least 32 characters), and the private `PMS_INITIAL_PASSWORD` setting. Never commit real values. Run `npm run db:migrate` to apply additive migrations and password-protect existing employee records without changing their IDs. Provisioning creates only missing accounts; it never resets an existing password. On an empty installation, the first employee can be created from the sign-in screen using the configured initial password. Afterwards, any signed-in teammate can add employees in **People & access**.
+
+Employees can change their own password in **Your password**. Changing a password revokes other sessions. Authorship comes from the verified session; caller-supplied actor headers cannot impersonate a teammate. LLM credentials and signing secrets stay on the server.
+
+### Codex connection
+
+Open **Connect Codex**, copy the setup prompt, and paste it into a current Codex desktop release on macOS or Windows. Node.js 22+ is required. The installer preserves existing configuration and global instructions, checks download integrity, installs two skills, and starts browser OAuth sign-in. The remote endpoint is `/mcp`; OAuth uses PKCE and audience-bound tokens, with CIMD discovery. Both modern and legacy stateless Streamable HTTP clients are supported.
+
+- `$update-progress`: collect new work from matching local project conversations, configured Git author identities, and working trees. The first run asks for a starting date. Evidence is summarized before upload; consumed source checkpoints advance atomically with the saved progress.
+- `$document-project`: read canonical project pages, verify facts against the repository, review exact/semantic duplication, and commit against the reviewed catalog revision.
+
+The skills also appear in the desktop slash menu. The global rule looks up relevant project documentation before project-specific work. Retrieved text is reference data, not instructions. Raw chats, complete source files, hidden reasoning, and credentials must not be uploaded. Local history availability varies; collection gaps are reported instead of silently treated as complete coverage.
+
+### Work reports
+
+**Work reports** generates an immutable report for inclusive Malaysia calendar dates, in English or Simplified Chinese. It groups projects, employees, and work bullets, then lists submission coverage and external blockers still open at the selected end date. Older blockers carry forward until explicitly resolved. Reports use Codex progress submissions; ticket references do not count as additional work.
+
+The separate PostgreSQL-backed worker uses `INTERNAL_LLM_MODEL` (default `gemma-4-no-think`) through the existing `LLM_API_BASE_URL` and `LLM_API_KEY`. It validates model output and attribution, retries transient failures up to three times, and never publishes partial reports. Documentation and progress remain available when the model is offline.
+
+Run `npm run worker` alongside the app in development. `npm run build` produces the web app and compiled worker/migration commands in `dist/runtime`. Docker Compose runs migrations before the app/worker, keeps PostgreSQL/MinIO internal, and binds only the app's existing host port to localhost. See [deployment procedure](deploy/KNOWLEDGE_ROLLOUT.md).
+
+### Validation
+
+`npm test` runs unit and isolated colleague-onboarding tests. `npm run test:integration` starts a disposable PostgreSQL cluster using local PostgreSQL binaries, exercises real transactions, authentication, browser OAuth/PKCE, MCP client calls, report snapshots, and worker recovery, then removes that cluster. Alternatively, set `TEST_DATABASE_URL` to an explicitly disposable test database. Never point integration tests at production.
+
+After `npm run build`, run `node scripts/test-integration.mjs --runtime-smoke` to check the compiled migrations twice, the standalone production app, password sign-in, OAuth discovery, MCP protection, and the compiled worker's heartbeat in another disposable database. `node scripts/test-integration.mjs --preview` starts a loopback-only UI with clearly labeled synthetic records; it does not use production data.
 
 ## Attachment storage
 

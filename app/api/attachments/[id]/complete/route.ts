@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, transaction } from "@/lib/db";
@@ -12,7 +13,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const { id } = await context.params;
     const body = await requestJson(request);

@@ -1,6 +1,8 @@
 node_modules
 .next
 .git
+.impeccable
+dist
 .env
 .env.*
 !.env.example

@@ -9,3 +9,6 @@ coverage/
 .env.*
 !.env.example
 data/
+dist/
+public/codex/
+.impeccable/review/

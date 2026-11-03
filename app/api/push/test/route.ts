@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, jsonError } from "@/lib/api";
 import { requireActor } from "@/lib/domain";
@@ -8,7 +9,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     const user = await requireActor(actor);
     const delivery = await sendPushToUser(actor, {
       title: "协策达 · Test notification",

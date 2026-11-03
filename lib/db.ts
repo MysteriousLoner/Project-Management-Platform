@@ -1,4 +1,7 @@
-import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { Pool, types as pgTypes, type PoolClient, type QueryResultRow } from "pg";
+import { knowledgeSchemaSql } from "./knowledge-schema";
+// Calendar dates must not shift when the host's timezone changes.
+pgTypes.setTypeParser(1082, (value) => value);
 
 const globalDb = globalThis as unknown as {
   pool?: Pool;
@@ -226,7 +229,26 @@ CREATE INDEX IF NOT EXISTS idx_user_departments_department
 
 export async function ensureSchema() {
   if (!globalDb.schemaReady) {
-    globalDb.schemaReady = pool.query(schemaSql).then(() => undefined);
+    globalDb.schemaReady = (async () => {
+      const client = await pool.connect();
+      try {
+        await client.query("SELECT pg_advisory_lock(183704, 1)");
+        await client.query("BEGIN");
+        await client.query(schemaSql);
+        const applied = await client.query("SELECT 1 FROM app_migrations WHERE key = '2026-11-knowledge-v1'");
+        if (!applied.rowCount) await client.query(knowledgeSchemaSql);
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        await client.query("SELECT pg_advisory_unlock(183704, 1)");
+        client.release();
+      }
+    })().catch((error) => {
+      globalDb.schemaReady = undefined;
+      throw error;
+    });
   }
   await globalDb.schemaReady;
 }

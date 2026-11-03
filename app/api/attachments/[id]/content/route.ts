@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { Readable } from "node:stream";
 import { ApiError, jsonError } from "@/lib/api";
 import { query } from "@/lib/db";
@@ -11,6 +12,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePrincipal(request);
     const { id } = await context.params;
     const attachment = await query(
       `SELECT object_key, original_filename, media_type, byte_size

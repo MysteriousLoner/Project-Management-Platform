@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ZodError } from "zod";
-
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-    public details?: unknown
-  ) {
-    super(message);
-  }
-}
+import { ApiError } from "./errors";
+export { ApiError } from "./errors";
 
 export function jsonError(error: unknown) {
   if (error instanceof ApiError) {
@@ -38,17 +29,16 @@ export function jsonError(error: unknown) {
       { status: 409 }
     );
   }
-  console.error(error);
+  console.error("Request failed", { type: error instanceof Error ? error.name : "unknown", code: pgCode });
   return NextResponse.json(
     { error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred.", details: {} } },
     { status: 500 }
   );
 }
 
-export function actorId(request: Request): string {
-  const value = request.headers.get("x-actor-id");
-  if (!value) throw new ApiError(400, "ACTOR_REQUIRED", "Select a user before making changes.");
-  return value;
+export async function actorId(request: Request): Promise<string> {
+  const { requirePrincipal } = await import("./auth-session");
+  return (await requirePrincipal(request)).employeeId;
 }
 
 export async function requestJson(request: Request) {

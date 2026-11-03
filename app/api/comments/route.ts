@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, rowToCamel, transaction } from "@/lib/db";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    await requirePrincipal(request);
     const workItemId = new URL(request.url).searchParams.get("workItemId");
     if (!workItemId) throw new ApiError(422, "WORK_ITEM_REQUIRED", "A work item ID is required.");
     const result = await query(
@@ -27,7 +29,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const input = commentInputSchema.parse(await requestJson(request));
     const comment = await transaction(async (client) => {

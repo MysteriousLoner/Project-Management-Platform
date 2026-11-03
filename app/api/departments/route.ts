@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { normalizeName, query, rowToCamel, transaction } from "@/lib/db";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    await requirePrincipal(request);
     const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
     const result = await query(
       `SELECT d.id, d.name, d.is_archived, d.created_at, d.updated_at,
@@ -30,7 +32,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const input = departmentInputSchema.parse(await requestJson(request));
     const department = await transaction(async (client) => {
@@ -59,7 +62,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const body = await requestJson(request);
     const id = String(body.id ?? "");

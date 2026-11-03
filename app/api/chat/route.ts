@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, rowToCamel } from "@/lib/db";
@@ -8,7 +9,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireActor(actorId(request));
+    await requirePrincipal(request);
+    await requireActor(await actorId(request));
     const body = await requestJson(request);
     const question = String(body.question ?? "").trim();
     const scopeMode =
@@ -115,8 +117,7 @@ export async function POST(request: Request) {
       signal: AbortSignal.timeout(120000)
     });
     if (!response.ok) {
-      const message = await response.text();
-      console.error("LLM provider error", response.status, message.slice(0, 500));
+      console.error("LLM provider error", { status: response.status });
       throw new ApiError(502, "LLM_ERROR", "The chatbot provider could not complete the request.");
     }
     const payload = await response.json();

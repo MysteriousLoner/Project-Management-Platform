@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-03T17:25:42.589Z",
+  "title": "Design System: 协策达 — Shared workspace",
+  "extensions": {
+    "colorMeta": {
+      "green": {
+        "role": "primary",
+        "displayName": "Workspace green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0831 156.61)",
+          "oklch(26.43% 0.0831 156.61)",
+          "oklch(37.86% 0.0831 156.61)",
+          "oklch(49.29% 0.0831 156.61)",
+          "oklch(60.71% 0.0831 156.61)",
+          "oklch(72.14% 0.0831 156.61)",
+          "oklch(83.57% 0.0831 156.61)",
+          "oklch(95.00% 0.0831 156.61)"
+        ]
+      },
+      "green-dark": {
+        "role": "primary",
+        "displayName": "Deep green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0691 156.88)",
+          "oklch(26.43% 0.0691 156.88)",
+          "oklch(37.86% 0.0691 156.88)",
+          "oklch(49.29% 0.0691 156.88)",
+          "oklch(60.71% 0.0691 156.88)",
+          "oklch(72.14% 0.0691 156.88)",
+          "oklch(83.57% 0.0691 156.88)",
+          "oklch(95.00% 0.0691 156.88)"
+        ]
+      },
+      "green-soft": {
+        "role": "primary",
+        "displayName": "Pale green",
+        "tonalRamp": [
+          "oklch(15.00% 0.0182 155.81)",
+          "oklch(26.43% 0.0182 155.81)",
+          "oklch(37.86% 0.0182 155.81)",
+          "oklch(49.29% 0.0182 155.81)",
+          "oklch(60.71% 0.0182 155.81)",
+          "oklch(72.14% 0.0182 155.81)",
+          "oklch(83.57% 0.0182 155.81)",
+          "oklch(95.00% 0.0182 155.81)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green-black ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.0183 158.30)",
+          "oklch(26.43% 0.0183 158.30)",
+          "oklch(37.86% 0.0183 158.30)",
+          "oklch(49.29% 0.0183 158.30)",
+          "oklch(60.71% 0.0183 158.30)",
+          "oklch(72.14% 0.0183 158.30)",
+          "oklch(83.57% 0.0183 158.30)",
+          "oklch(95.00% 0.0183 158.30)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted green-gray",
+        "tonalRamp": [
+          "oklch(15.00% 0.0171 157.89)",
+          "oklch(26.43% 0.0171 157.89)",
+          "oklch(37.86% 0.0171 157.89)",
+          "oklch(49.29% 0.0171 157.89)",
+          "oklch(60.71% 0.0171 157.89)",
+          "oklch(72.14% 0.0171 157.89)",
+          "oklch(83.57% 0.0171 157.89)",
+          "oklch(95.00% 0.0171 157.89)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Quiet border",
+        "tonalRamp": [
+          "oklch(15.00% 0.0103 145.49)",
+          "oklch(26.43% 0.0103 145.49)",
+          "oklch(37.86% 0.0103 145.49)",
+          "oklch(49.29% 0.0103 145.49)",
+          "oklch(60.71% 0.0103 145.49)",
+          "oklch(72.14% 0.0103 145.49)",
+          "oklch(83.57% 0.0103 145.49)",
+          "oklch(95.00% 0.0103 145.49)"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Soft divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.0051 145.54)",
+          "oklch(26.43% 0.0051 145.54)",
+          "oklch(37.86% 0.0051 145.54)",
+          "oklch(49.29% 0.0051 145.54)",
+          "oklch(60.71% 0.0051 145.54)",
+          "oklch(72.14% 0.0051 145.54)",
+          "oklch(83.57% 0.0051 145.54)",
+          "oklch(95.00% 0.0051 145.54)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0000 89.88)",
+          "oklch(26.43% 0.0000 89.88)",
+          "oklch(37.86% 0.0000 89.88)",
+          "oklch(49.29% 0.0000 89.88)",
+          "oklch(60.71% 0.0000 89.88)",
+          "oklch(72.14% 0.0000 89.88)",
+          "oklch(83.57% 0.0000 89.88)",
+          "oklch(95.00% 0.0000 89.88)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Off-white canvas",
+        "tonalRamp": [
+          "oklch(15.00% 0.0057 128.53)",
+          "oklch(26.43% 0.0057 128.53)",
+          "oklch(37.86% 0.0057 128.53)",
+          "oklch(49.29% 0.0057 128.53)",
+          "oklch(60.71% 0.0057 128.53)",
+          "oklch(72.14% 0.0057 128.53)",
+          "oklch(83.57% 0.0057 128.53)",
+          "oklch(95.00% 0.0057 128.53)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Forest sidebar",
+        "tonalRamp": [
+          "oklch(15.00% 0.0193 160.69)",
+          "oklch(26.43% 0.0193 160.69)",
+          "oklch(37.86% 0.0193 160.69)",
+          "oklch(49.29% 0.0193 160.69)",
+          "oklch(60.71% 0.0193 160.69)",
+          "oklch(72.14% 0.0193 160.69)",
+          "oklch(83.57% 0.0193 160.69)",
+          "oklch(95.00% 0.0193 160.69)"
+        ]
+      },
+      "sidebar-text": {
+        "role": "neutral",
+        "displayName": "Light sidebar text",
+        "tonalRamp": [
+          "oklch(15.00% 0.0180 153.51)",
+          "oklch(26.43% 0.0180 153.51)",
+          "oklch(37.86% 0.0180 153.51)",
+          "oklch(49.29% 0.0180 153.51)",
+          "oklch(60.71% 0.0180 153.51)",
+          "oklch(72.14% 0.0180 153.51)",
+          "oklch(83.57% 0.0180 153.51)",
+          "oklch(95.00% 0.0180 153.51)"
+        ]
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "Field border",
+        "tonalRamp": [
+          "oklch(15.00% 0.0190 150.50)",
+          "oklch(26.43% 0.0190 150.50)",
+          "oklch(37.86% 0.0190 150.50)",
+          "oklch(49.29% 0.0190 150.50)",
+          "oklch(60.71% 0.0190 150.50)",
+          "oklch(72.14% 0.0190 150.50)",
+          "oklch(83.57% 0.0190 150.50)",
+          "oklch(95.00% 0.0190 150.50)"
+        ]
+      },
+      "field-focus": {
+        "role": "neutral",
+        "displayName": "Field focus",
+        "tonalRamp": [
+          "oklch(15.00% 0.0670 155.50)",
+          "oklch(26.43% 0.0670 155.50)",
+          "oklch(37.86% 0.0670 155.50)",
+          "oklch(49.29% 0.0670 155.50)",
+          "oklch(60.71% 0.0670 155.50)",
+          "oklch(72.14% 0.0670 155.50)",
+          "oklch(83.57% 0.0670 155.50)",
+          "oklch(95.00% 0.0670 155.50)"
+        ]
+      },
+      "red": {
+        "role": "status",
+        "displayName": "Failure red",
+        "tonalRamp": [
+          "oklch(15.00% 0.1626 24.65)",
+          "oklch(26.43% 0.1626 24.65)",
+          "oklch(37.86% 0.1626 24.65)",
+          "oklch(49.29% 0.1626 24.65)",
+          "oklch(60.71% 0.1626 24.65)",
+          "oklch(72.14% 0.1626 24.65)",
+          "oklch(83.57% 0.1626 24.65)",
+          "oklch(95.00% 0.1626 24.65)"
+        ]
+      },
+      "red-soft": {
+        "role": "status",
+        "displayName": "Pale failure red",
+        "tonalRamp": [
+          "oklch(15.00% 0.0185 17.48)",
+          "oklch(26.43% 0.0185 17.48)",
+          "oklch(37.86% 0.0185 17.48)",
+          "oklch(49.29% 0.0185 17.48)",
+          "oklch(60.71% 0.0185 17.48)",
+          "oklch(72.14% 0.0185 17.48)",
+          "oklch(83.57% 0.0185 17.48)",
+          "oklch(95.00% 0.0185 17.48)"
+        ]
+      },
+      "amber-soft": {
+        "role": "status",
+        "displayName": "Pale pending amber",
+        "tonalRamp": [
+          "oklch(15.00% 0.0325 85.48)",
+          "oklch(26.43% 0.0325 85.48)",
+          "oklch(37.86% 0.0325 85.48)",
+          "oklch(49.29% 0.0325 85.48)",
+          "oklch(60.71% 0.0325 85.48)",
+          "oklch(72.14% 0.0325 85.48)",
+          "oklch(83.57% 0.0325 85.48)",
+          "oklch(95.00% 0.0325 85.48)"
+        ]
+      },
+      "pending-text": {
+        "role": "status",
+        "displayName": "Pending amber text",
+        "tonalRamp": [
+          "oklch(15.00% 0.0922 68.18)",
+          "oklch(26.43% 0.0922 68.18)",
+          "oklch(37.86% 0.0922 68.18)",
+          "oklch(49.29% 0.0922 68.18)",
+          "oklch(60.71% 0.0922 68.18)",
+          "oklch(72.14% 0.0922 68.18)",
+          "oklch(83.57% 0.0922 68.18)",
+          "oklch(95.00% 0.0922 68.18)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Workspace heading",
+        "purpose": "Route title; reduces on mobile."
+      },
+      "body": {
+        "displayName": "Reading text",
+        "purpose": "Report bullets and setup prose."
+      },
+      "mono": {
+        "displayName": "Setup prompt",
+        "purpose": "Selectable setup prompt only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "primary-action",
+        "value": "0 3px 9px rgba(40, 100, 67, 0.25)",
+        "purpose": "Shallow lift on primary buttons."
+      },
+      {
+        "name": "field-focus",
+        "value": "0 0 0 3px rgba(65, 123, 84, 0.1)",
+        "purpose": "Native field focus treatment."
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "140ms ease",
+        "purpose": "Existing primary button hover transition with a 1px upward translation."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "report-stack",
+        "value": "1050px"
+      },
+      {
+        "name": "compact-frame",
+        "value": "1000px"
+      },
+      {
+        "name": "mobile-frame",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action in a form or report controls.",
+      "html": "<button class=\"ds-button ds-primary\">Generate report</button>",
+      "css": ".ds-button{display:inline-flex;min-height:39px;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 15px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;transition:140ms ease}.ds-button:disabled{opacity:.48;cursor:not-allowed}.ds-button:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}.ds-primary{background:var(--green,#286443);color:var(--surface,#ffffff);box-shadow:0 3px 9px rgba(40,100,67,.25)}.ds-primary:hover:not(:disabled){background:var(--green-dark,#1c4c32);transform:translateY(-1px)}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Report copy and print actions.",
+      "html": "<button class=\"ds-button ds-secondary\">Copy Markdown</button>",
+      "css": ".ds-button{display:inline-flex;min-height:39px;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 15px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;transition:140ms ease}.ds-button:disabled{opacity:.48;cursor:not-allowed}.ds-button:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}.ds-secondary{border-color:#bac8be;background:#edf4ef;color:var(--green-dark,#1c4c32)}"
+    },
+    {
+      "name": "Ghost button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions in lists and account rows.",
+      "html": "<button class=\"ds-button ds-ghost\">Load older reports</button>",
+      "css": ".ds-button{display:inline-flex;min-height:39px;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 15px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;transition:140ms ease}.ds-button:disabled{opacity:.48;cursor:not-allowed}.ds-button:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}.ds-ghost{border-color:var(--line,#dfe5df);background:var(--surface,#ffffff);color:#3b4740}"
+    },
+    {
+      "name": "Report field",
+      "kind": "input",
+      "refersTo": "report-field",
+      "description": "A labeled native date field; the same field language is used for selects.",
+      "html": "<label class=\"ds-field\">From<input type=\"date\" value=\"2026-11-01\"></label>",
+      "css": ".ds-field{display:grid;gap:7px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:600;color:var(--ink,#17211b)}.ds-field input{font:inherit;font-weight:400;max-width:100%;min-height:42px;border:1px solid #bcc8be;border-radius:7px;padding:10px 12px;background:var(--surface,#ffffff);color:var(--ink,#17211b);caret-color:var(--green,#286443);font-variant-numeric:tabular-nums;outline:none}.ds-field input:focus{border-color:#6e9c7e;box-shadow:0 0 0 3px rgba(65,123,84,.1)}.ds-field input:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}"
+    },
+    {
+      "name": "Workspace navigation",
+      "kind": "nav",
+      "description": "Five text destinations, with wrapping visible rows on mobile.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Workspace navigation\"><a href=\"#\">Ticket tracker</a><a href=\"#\" class=\"ds-current\">Work reports</a><a href=\"#\">Connect Codex</a><a href=\"#\">People &amp; access</a><a href=\"#\">Your password</a></nav>",
+      "css": ".ds-nav{display:grid;gap:4px;padding:18px;background:var(--sidebar,#18231d);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ds-nav a{display:block;border-radius:9px;padding:11px 12px;color:#c0ccc3;text-decoration:none;font-size:14px}.ds-nav a:hover{background:rgba(255,255,255,.06);color:white}.ds-nav .ds-current{background:rgba(213,242,221,.12);color:#e3f8e8;font-weight:600}.ds-nav a:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}@media(max-width:720px){.ds-nav{display:flex;flex-wrap:wrap;overflow:visible}.ds-nav a{flex:0 0 auto;white-space:nowrap}}"
+    },
+    {
+      "name": "Job-state label",
+      "kind": "chip",
+      "refersTo": "job-ready",
+      "description": "Text accompanies ready, queued, generating, and failed job colors.",
+      "html": "<div class=\"ds-states\"><span class=\"ds-job\">Ready</span><span class=\"ds-job ds-pending\">Generating</span><span class=\"ds-job ds-failed\">Failed</span></div>",
+      "css": ".ds-states{display:flex;gap:8px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ds-job{font-size:11px;width:fit-content;color:var(--green-dark,#1c4c32);background:var(--green-soft,#e5f2e9);padding:3px 7px;border-radius:4px}.ds-pending{color:#74480a;background:var(--amber-soft,#fbf0d9)}.ds-failed{color:var(--red,#b63838);background:var(--red-soft,#fbeaea)}"
+    },
+    {
+      "name": "Report paper",
+      "kind": "card",
+      "refersTo": "report-paper",
+      "description": "Flat document surface shared by generated reports and empty states.",
+      "html": "<section class=\"ds-paper\"><div class=\"ds-empty\"><h2>Your team’s week, in one place</h2><p>Select a date range and generate a report. Work is grouped by project and employee, with missing submissions and external blockers made visible.</p><p class=\"ds-muted\">Reports reflect progress submitted through Codex.</p></div></section>",
+      "css": ".ds-paper{background:var(--surface,#ffffff);border:1px solid var(--line,#dfe5df);border-radius:12px;min-width:0;min-height:540px;color:var(--ink,#17211b);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ds-empty{padding:64px 44px;max-width:70ch}.ds-empty h2{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin-top:0}.ds-empty p{line-height:1.7;margin-top:0}.ds-muted{color:var(--muted,#68736c)}@media(max-width:720px){.ds-empty{padding:27px 21px}.ds-paper{min-height:360px}}"
+    },
+    {
+      "name": "Report history choice",
+      "kind": "custom",
+      "description": "Selected history item with date range, creation metadata, and explicit job state.",
+      "html": "<button class=\"ds-history ds-selected\" aria-pressed=\"true\"><strong>2026-11-01 — 2026-11-04</strong><span>English · 4 Nov 2026, 10:30 am</span><span class=\"ds-history-state\">Ready</span></button>",
+      "css": ".ds-history{display:grid;gap:8px;width:100%;border:1px solid transparent;background:transparent;text-align:left;padding:13px;border-radius:8px;cursor:pointer;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:var(--ink,#17211b);font-variant-numeric:tabular-nums}.ds-history:hover{background:var(--line-soft,#edf0ed)}.ds-selected{background:var(--surface,#ffffff);border-color:#a5bca9}.ds-history strong{font-size:12px}.ds-history>span:not(.ds-history-state){font-size:11px;color:var(--muted,#68736c);line-height:1.5}.ds-history-state{font-size:11px;width:fit-content;color:var(--green-dark,#1c4c32);background:var(--green-soft,#e5f2e9);padding:3px 7px;border-radius:4px}.ds-history:focus-visible{outline:3px solid var(--green,#286443);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Incumbent workspace continuity",
+    "overview": "This is a record of the built workspace extension, rather than a newly selected visual identity. Its authority is the shared stylesheet and the implemented reports, people, password, Codex setup, and workspace frame. The existing application name and icon remain the identity anchors. Unexamined ticket-tracker surfaces are outside this record.\n\nDark green navigation frames an off-white working canvas. White surfaces, quiet borders, compact controls, and a single green action color support task completion and reading. Reports receive more whitespace and longer line spacing than surrounding controls. The implemented stack names Inter first and falls back to local system UI fonts; the root layout does not load a separate webfont.",
+    "keyCharacteristics": [
+      "Green actions and selection states within a restrained neutral workspace.",
+      "Native date, select, password, and text controls with persistent labels.",
+      "Compact navigation and controls around a spacious report document.",
+      "Rounded corners, thin borders, and shallow action depth."
+    ],
+    "rules": [
+      {
+        "name": "The Labeled State Rule",
+        "body": "Status color accompanies a readable state name. Ready, Queued, Generating, and Failed remain explicit text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Surface Rule",
+        "body": "Use the existing border and surface separation for report containers; reserve the recorded lift for primary actions.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** extend the existing green, off-white, border-led workspace and retained brand assets.",
+      "**Do** keep labels, native controls, visible keyboard focus, and readable job-state names.",
+      "**Do** use compact controls around the more spacious report reading surface.",
+      "**Do** keep all five workspace destinations visible in wrapping mobile rows."
+    ],
+    "donts": [
+      "**Don't** introduce a replacement identity while extending these workspace screens.",
+      "**Don't** encode report job state by color alone.",
+      "**Don't** print workspace chrome or the initial-password reminder with a report.",
+      "**Don't** apply this scoped record to unrelated ticket-tracker patterns without inspecting them."
+    ]
+  }
+}

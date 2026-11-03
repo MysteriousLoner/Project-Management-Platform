@@ -1,13 +1,16 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { normalizeName, query, rowToCamel, transaction } from "@/lib/db";
 import { requireActiveDepartment, requireActor } from "@/lib/domain";
 import { userInputSchema } from "@/lib/validation";
+import { insertAccount, initialPassword } from "@/lib/accounts";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    await requirePrincipal(request);
     const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
     const departmentId = new URL(request.url).searchParams.get("departmentId");
     const result = await query(
@@ -33,6 +36,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requirePrincipal(request);
     const input = userInputSchema.parse(await requestJson(request));
     await requireActiveDepartment(input.departmentId);
     const colors = ["#5b5bd6", "#0e9384", "#d97706", "#dc2626", "#7c3aed", "#0284c7"];
@@ -48,6 +52,7 @@ export async function POST(request: Request) {
         "INSERT INTO user_departments (user_id, department_id) VALUES ($1, $2)",
         [result.rows[0].id, input.departmentId]
       );
+      await insertAccount(client, result.rows[0].id, initialPassword(), input.displayName);
       return { ...result.rows[0], department_ids: [input.departmentId] };
     });
     return NextResponse.json({ user: rowToCamel(user) }, { status: 201 });
@@ -58,7 +63,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireActor(actorId(request));
+    await requirePrincipal(request);
+    await requireActor(await actorId(request));
     const body = await requestJson(request);
     const id = String(body.id ?? "");
     if (!id) throw new ApiError(422, "ID_REQUIRED", "A user ID is required.");

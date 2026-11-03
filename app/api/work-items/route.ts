@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query, rowToCamel, transaction } from "@/lib/db";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    await requirePrincipal(request);
     const params = new URL(request.url).searchParams;
     const conditions: string[] = [];
     const values: unknown[] = [];
@@ -69,7 +71,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const input = workItemInputSchema.parse(await requestJson(request));
     const item = await transaction(async (client) => {
@@ -154,7 +157,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const body = await requestJson(request);
     const id = String(body.id ?? "");

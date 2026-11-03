@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError } from "@/lib/api";
@@ -13,7 +14,8 @@ export async function PUT(
   context: { params: Promise<{ id: string; partNumber: string }> }
 ) {
   try {
-    await requireActor(actorId(request));
+    await requirePrincipal(request);
+    await requireActor(await actorId(request));
     const { id, partNumber: rawPartNumber } = await context.params;
     const partNumber = Number(rawPartNumber);
     const contentLength = Number(request.headers.get("content-length") ?? 0);

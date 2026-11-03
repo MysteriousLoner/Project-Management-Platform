@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api";
 import { query, rowToCamel } from "@/lib/db";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    await requirePrincipal(request);
     const projectId = new URL(request.url).searchParams.get("projectId");
     const departmentId = new URL(request.url).searchParams.get("departmentId");
     if (!departmentId) {

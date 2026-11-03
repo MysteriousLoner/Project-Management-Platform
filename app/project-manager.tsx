@@ -23,6 +23,8 @@ import {
 import { type Locale, useI18n } from "@/lib/i18n";
 import { appPath } from "@/lib/base-path";
 import PushNotificationSettings from "./push-notification-settings";
+import Link from "next/link";
+import SignOut from "./sign-out";
 
 type View = "dashboard" | "tickets" | "blocked" | "review" | "activity" | "settings";
 type ChatScopeMode = "global" | "project";
@@ -116,7 +118,7 @@ async function api<T>(
   actorId?: string | null
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  if (actorId) headers.set("X-Actor-Id", actorId);
+  void actorId; // Authorship is derived from the server session.
   if (options.body && !(options.body instanceof Blob)) headers.set("Content-Type", "application/json");
   const response = await fetch(appPath(path), { ...options, headers });
   const payload = await response.json().catch(() => ({}));
@@ -234,7 +236,7 @@ function Modal({
   );
 }
 
-export default function ProjectManager() {
+export default function ProjectManager({ employeeId, usingInitialPassword }: { employeeId: string; usingInitialPassword: boolean }) {
   const { locale, setLocale, t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -249,7 +251,6 @@ export default function ProjectManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [showUserPicker, setShowUserPicker] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [selected, setSelected] = useState<WorkItem | null>(null);
   const [search, setSearch] = useState("");
@@ -273,13 +274,10 @@ export default function ProjectManager() {
   const loadIdentity = useCallback(async () => {
     const payload = await api<{ users: User[] }>("/api/users");
     setUsers(payload.users);
-    const stored =
-      localStorage.getItem("xieceda.actorId") ?? localStorage.getItem("planeo.actorId");
-    const current = payload.users.find((user) => user.id === stored) ?? null;
+    const current = payload.users.find((user) => user.id === employeeId) ?? null;
     setActor(current);
-    setShowUserPicker(!current);
     return payload.users;
-  }, []);
+  }, [employeeId]);
 
   const loadDepartments = useCallback(async () => {
     const payload = await api<{ departments: Department[] }>("/api/departments?includeArchived=true");
@@ -328,9 +326,7 @@ export default function ProjectManager() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     Promise.all([loadIdentity(), loadDepartments()])
       .then(([loadedUsers, loadedDepartments]) => {
-        const storedActorId =
-          localStorage.getItem("xieceda.actorId") ?? localStorage.getItem("planeo.actorId");
-        const currentActor = loadedUsers.find((user) => user.id === storedActorId) ?? null;
+        const currentActor = loadedUsers.find((user) => user.id === employeeId) ?? null;
         if (!currentActor) return;
         const storedDepartmentId = localStorage.getItem(`xieceda.departmentId.${currentActor.id}`);
         const currentDepartment =
@@ -343,7 +339,7 @@ export default function ProjectManager() {
       })
       .catch((cause) => setError(cause.message))
       .finally(() => setLoading(false));
-  }, [loadIdentity, loadDepartments]);
+  }, [loadIdentity, loadDepartments, employeeId]);
 
   useEffect(() => {
     // Department changes reload the project collection from the server.
@@ -397,20 +393,6 @@ export default function ProjectManager() {
       setSelected(payload.item);
     }
     if (message) showMessage(message);
-  }
-
-  function selectActor(user: User) {
-    localStorage.setItem("xieceda.actorId", user.id);
-    setActor(user);
-    const storedDepartmentId = localStorage.getItem(`xieceda.departmentId.${user.id}`);
-    const nextDepartment =
-      departments.find((entry) => !entry.isArchived && entry.id === storedDepartmentId && user.departmentIds.includes(entry.id)) ??
-      departments.find((entry) => !entry.isArchived && user.departmentIds.includes(entry.id)) ??
-      null;
-    setDepartment(nextDepartment);
-    setProject(null);
-    setSelected(null);
-    setShowUserPicker(false);
   }
 
   function selectDepartment(departmentIdToSelect: string) {
@@ -519,16 +501,17 @@ export default function ProjectManager() {
               )}
             </button>
           ))}
+          {<Link href={appPath("/reports")}>{locale === "zh-CN" ? "工作报告" : "Work reports"}</Link>}
+          <Link href={appPath("/codex-setup")}>{locale === "zh-CN" ? "连接 Codex" : "Connect Codex"}</Link>
+          {<Link href={appPath("/accounts")}>{locale === "zh-CN" ? "人员与访问权限" : "People & access"}</Link>}
         </nav>
         <div className="sidebar-footer">
-          <button className="user-control" onClick={() => setShowUserPicker(true)}>
+          <div className="user-control">
             {selectedActor && <Avatar user={selectedActor} />}
-            <span>
-              <small>{t("identity.workingAs")}</small>
-              <strong>{actor?.displayName ?? t("identity.selectUser")}</strong>
-            </span>
-            <span>⌄</span>
-          </button>
+            <span><small>{locale === "zh-CN" ? "已登录" : "Signed in"}</small><strong>{actor?.displayName}</strong></span>
+          </div>
+          <Link className="password-link" href={appPath("/password")}>{locale === "zh-CN" ? "修改密码" : "Change password"}</Link>
+          <SignOut />
         </div>
       </aside>
 
@@ -571,6 +554,7 @@ export default function ProjectManager() {
           </div>
         </header>
 
+        {usingInitialPassword && <p className="alert no-print">{locale === "zh-CN" ? "您的账户仍使用初始密码。" : "Your account is using the initial workspace password."} <Link href={appPath("/password")}>{locale === "zh-CN" ? "修改密码" : "Change your password"}</Link></p>}
         {error && (
           <div className="alert alert-error">
             <span>{error}</span>
@@ -648,16 +632,6 @@ export default function ProjectManager() {
         {t("chat.askBrand")}
       </button>
 
-      {showUserPicker && (
-        <UserPicker
-          users={users}
-          departments={departments}
-          defaultDepartmentId={departmentId ?? departments.find((entry) => !entry.isArchived)?.id ?? ""}
-          onSelect={selectActor}
-          onUsersChanged={loadIdentity}
-          onClose={actor ? () => setShowUserPicker(false) : undefined}
-        />
-      )}
       {showTicketForm && project && actor && (
         <WorkItemForm
           title={t("form.createTicket")}
@@ -718,106 +692,6 @@ function EmptyProject({ onOpenSettings }: { onOpenSettings: () => void }) {
         {t("empty.openSettings")}
       </button>
     </section>
-  );
-}
-
-function UserPicker({
-  users,
-  departments,
-  defaultDepartmentId,
-  onSelect,
-  onUsersChanged,
-  onClose
-}: {
-  users: User[];
-  departments: Department[];
-  defaultDepartmentId: string;
-  onSelect: (user: User) => void;
-  onUsersChanged: () => Promise<unknown>;
-  onClose?: () => void;
-}) {
-  const { t } = useI18n();
-  const [name, setName] = useState("");
-  const [departmentId, setDepartmentId] = useState(defaultDepartmentId || departments.find((entry) => !entry.isArchived)?.id || "");
-  const [adding, setAdding] = useState(users.length === 0);
-  const [error, setError] = useState("");
-
-  async function addUser(event: FormEvent) {
-    event.preventDefault();
-    try {
-      const payload = await api<{ user: User }>("/api/users", {
-        method: "POST",
-        body: JSON.stringify({ displayName: name, departmentId })
-      });
-      await onUsersChanged();
-      onSelect(payload.user);
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  }
-
-  return (
-    <div className="modal-backdrop user-picker-backdrop">
-      <section className="user-picker" role="dialog" aria-modal="true" aria-label={t("identity.dialog")}>
-        {onClose && (
-          <button className="icon-button picker-close" onClick={onClose} aria-label={t("close")}>
-            ×
-          </button>
-        )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="picker-brand-image" src={appPath("/icons/icon-192.png")} alt="" />
-        <span className="eyebrow">{t("identity.selection")}</span>
-        <h1>{t("identity.question")}</h1>
-        <p className="muted">{t("identity.description")}</p>
-        {!adding ? (
-          <>
-            <div className="user-grid">
-              {users.map((user) => (
-                <button key={user.id} className="user-card" onClick={() => onSelect(user)}>
-                  <Avatar user={user} />
-                  <strong>{user.displayName}</strong>
-                </button>
-              ))}
-            </div>
-            <button className="button button-secondary full-width" onClick={() => setAdding(true)}>
-              {t("identity.addAnother")}
-            </button>
-          </>
-        ) : (
-          <form onSubmit={addUser} className="stack-form">
-            <label>
-              {t("identity.displayName")}
-              <input
-                autoFocus
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t("identity.namePlaceholder")}
-                maxLength={100}
-                required
-              />
-            </label>
-            <label>
-              {t("department.name")}
-              <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} required>
-                <option value="">{t("department.select")}</option>
-                {departments.filter((entry) => !entry.isArchived).map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.name}</option>
-                ))}
-              </select>
-            </label>
-            {error && <p className="form-error">{error}</p>}
-            <button className="button button-primary full-width" type="submit">
-              {t("identity.addContinue")}
-            </button>
-            {!!users.length && (
-              <button className="button button-ghost full-width" type="button" onClick={() => setAdding(false)}>
-                {t("identity.back")}
-              </button>
-            )}
-          </form>
-        )}
-      </section>
-    </div>
   );
 }
 

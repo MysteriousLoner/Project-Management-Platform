@@ -1,3 +1,4 @@
+import { requirePrincipal } from "@/lib/auth-session";
 import { NextResponse } from "next/server";
 import { actorId, ApiError, jsonError, requestJson } from "@/lib/api";
 import { query } from "@/lib/db";
@@ -8,7 +9,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const actor = actorId(request);
+    await requirePrincipal(request);
+    const actor = await actorId(request);
     await requireActor(actor);
     const body = await requestJson(request);
     const endpoint = String(body.endpoint ?? "");
@@ -36,7 +38,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireActor(actorId(request));
+    await requirePrincipal(request);
+    await requireActor(await actorId(request));
     const endpoint = String((await requestJson(request)).endpoint ?? "");
     if (!endpoint) throw new ApiError(422, "ENDPOINT_REQUIRED", "A push endpoint is required.");
     await query("DELETE FROM push_subscriptions WHERE endpoint = $1", [endpoint]);
