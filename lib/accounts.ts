@@ -73,6 +73,7 @@ export async function changeAccount(principal: Principal, raw: unknown) {
 
 export async function changeOwnPassword(principal: Principal, raw: unknown) {
   const input = z.object({ currentPassword: z.string().min(1).max(128), newPassword: z.string().min(8).max(128), idempotencyKey: key }).strict().parse(raw);
+  if (principal.usingInitialPassword && input.newPassword === input.currentPassword) throw new ApiError(422, "PERSONAL_PASSWORD_REQUIRED", "Choose a personal password different from the initial password.");
   requireAuthConfiguration();
   // Do not persist a fast, guessable fingerprint of the password values.
   const privateDigest = createHmac("sha256", process.env.BETTER_AUTH_SECRET!).update(JSON.stringify([input.currentPassword, input.newPassword])).digest("hex");

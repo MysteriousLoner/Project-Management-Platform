@@ -77,7 +77,7 @@ Every employee signs in by selecting their name and entering their password. Eve
 
 Before starting, configure `BETTER_AUTH_URL`, a private random `BETTER_AUTH_SECRET` (at least 32 characters), and the private `PMS_INITIAL_PASSWORD` setting. Never commit real values. Run `npm run db:migrate` to apply additive migrations and password-protect existing employee records without changing their IDs. Provisioning creates only missing accounts; it never resets an existing password. On an empty installation, the first employee can be created from the sign-in screen using the configured initial password. Afterwards, any signed-in teammate can add employees in **People & access**.
 
-Employees can change their own password in **Your password**. Changing a password revokes other sessions. Authorship comes from the verified session; caller-supplied actor headers cannot impersonate a teammate. LLM credentials and signing secrets stay on the server.
+New accounts are prompted to choose a personal password immediately after sign-in, then return to their original page or Codex connection consent. Employees can also change their own password in **Your password**. Changing a password revokes other sessions. Authorship comes from the verified session; caller-supplied actor headers cannot impersonate a teammate. LLM credentials and signing secrets stay on the server.
 
 ### Codex connection
 

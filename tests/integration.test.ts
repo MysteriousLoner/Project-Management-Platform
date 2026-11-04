@@ -100,6 +100,8 @@ describe.skipIf(!enabled)("PostgreSQL, accounts, MCP, and worker integration", (
   afterAll(async () => { if (server) { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); } if (db) await db.pool.end(); });
 
   it("password-protects employee accounts and gives every employee access", async () => {
+    expect(alice.usingInitialPassword).toBe(true);
+    await expect(accounts.changeOwnPassword(alice, { currentPassword: process.env.PMS_INITIAL_PASSWORD, newPassword: process.env.PMS_INITIAL_PASSWORD, idempotencyKey: key() })).rejects.toMatchObject({ code: "PERSONAL_PASSWORD_REQUIRED" });
     expect(new Set([alice.employeeId, bob.employeeId, manager.employeeId]).size).toBe(3);
     const links = await db.query("SELECT count(*)::int AS count FROM kb_account_links"); expect(links.rows[0].count).toBe(4);
     const firstId = alice.employeeId;

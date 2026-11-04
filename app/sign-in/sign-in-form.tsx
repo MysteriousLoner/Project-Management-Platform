@@ -2,6 +2,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { appPath } from "@/lib/base-path";
+import { signInDestination } from "@/lib/sign-in-destination";
 export default function SignInForm() {
   const params = useSearchParams();
   const [employees, setEmployees] = useState<{ username: string; displayName: string }[]>([]);
@@ -26,8 +27,11 @@ export default function SignInForm() {
       const response = await fetch(appPath("/api/auth/sign-in/username"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password: form.get("password"), callbackURL: `${window.location.origin}${appPath(returnTo)}`, ...(oauthQuery ? { oauth_query: oauthQuery } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? data.error_description ?? "Sign-in failed. Check your employee name and password.");
-      const next = data.url ?? data.redirect_uri;
-      if (next) window.location.assign(next); else window.location.assign(appPath(returnTo));
+      const identityResponse = await fetch(appPath("/api/me"), { cache: "no-store" });
+      if (!identityResponse.ok) throw new Error("Your account could not be verified. Please sign in again.");
+      const identity = await identityResponse.json();
+      const next = data.url ?? data.redirect_uri ?? appPath(returnTo);
+      window.location.assign(signInDestination(identity.principal.usingInitialPassword, next, window.location.origin, appPath("/password")));
     } catch (cause) { setError((cause as Error).message); setBusy(false); }
   }
   return <form className="stack-form" onSubmit={submit}>
@@ -35,6 +39,6 @@ export default function SignInForm() {
     <label>Password<input type="password" name="password" autoComplete="current-password" required /></label>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button button-primary full-width" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-    <p className="auth-help">Use your personal password, or the initial workspace password for a new account. You can change it after signing in.</p>
+    <p className="auth-help">Use your personal password, or the initial workspace password for a new account. On first sign-in, you’ll be prompted to choose a personal password.</p>
   </form>;
 }

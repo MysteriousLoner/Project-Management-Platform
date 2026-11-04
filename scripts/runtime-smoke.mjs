@@ -45,7 +45,12 @@ try {
   const cookie = signIn.headers.getSetCookie().map((x) => x.split(';')[0]).join('; ');
   const me = await fetch(`${base}/api/me`, { headers: { Cookie: cookie } });
   assert.equal(me.status, 200, 'Production authenticated identity');
-  assert.equal((await me.json()).principal.displayName, 'Synthetic runtime employee');
+  const identity = (await me.json()).principal;
+  assert.equal(identity.displayName, 'Synthetic runtime employee');
+  assert.equal(identity.usingInitialPassword, true);
+  const password = await fetch(`${base}/password?firstLogin=1&returnTo=%2Freports`, { headers: { Cookie: cookie }, redirect: 'manual' });
+  assert.equal(password.status, 200, 'Production first-login password prompt');
+  assert.ok((await password.text()).includes('Please choose a personal password before continuing.'));
   const reports = await fetch(`${base}/reports`, { headers: { Cookie: cookie }, redirect: 'manual' });
   assert.equal(reports.status, 200, 'Production report page');
   assert.equal((await fetch(`${base}/.well-known/oauth-protected-resource/mcp`)).status, 200, 'Production OAuth discovery');
